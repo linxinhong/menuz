@@ -1,0 +1,4 @@
+﻿test()
+{
+	Msgbox % ItemString
+}
