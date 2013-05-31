@@ -528,7 +528,7 @@ ToRun(str,Mode="")
 		If ErrorLevel
 			Traytip,错误,"运行"%str%"有误，请检查",10,3
 	}
-	If IniReadValue(INI,"Config","TrayTip",0)
+	If IniReadValue(INI,"Config","TrayTip",1)
 		Traytip,运行结果,%Str%,10,1
 	EmptyMem()
 	return,runpid
