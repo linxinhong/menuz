@@ -1189,12 +1189,20 @@ ReplaceSwitch(MenuString)
 		{
 			If RegExMatch(SelectSwitch,"i)\{select\}")
 				RString := Select.String
+			Else 
+				If RegExMatch(SelectSwitch,"i)\{Select\[[^\[\]]*\]\}")
+				{
+					EncodeMode := SubStr(SelectSwitch,9,strlen(SelectSwitch)-10)
+					RString := SksSub_UrlEncode(Select.String,EncodeMode)
+				}
+			/*
 			Else
 			{
 				; {Select:RegEx} {{{3
 				var := "%" SubStr(SelectSwitch,9,strlen(SelectSwitch)-9) "%"
 				RegExMatch(Select.String,ReplaceVar(var),RString)
 			}
+			*/
 		}
 		; {box} {{{3
 		If RegExMatch(Switch,"i)\{box:[^\{\}]*\}")
@@ -1671,6 +1679,7 @@ EmptyMem(PID="AHK Rocks")
     DllCall("CloseHandle", "Int", h)
 }
 ;/======================================================================/
+; 以下为引用函数
 ; FileGetVersionInfo_AW() {{{2
 ; 获取文件名称，用于MenuZ.auto
 FileGetVersionInfo_AW( peFile="", StringFileInfo="", Delimiter="|") {    ; Written by SKAN
@@ -1698,6 +1707,26 @@ FileGetVersionInfo_AW( peFile="", StringFileInfo="", Delimiter="|") {    ; Writt
         .  A_Tab : "" ) . Value . Delimiter ) : ""
 } StringTrimRight, Info, Info, 1
 Return Info
+}
+; SksSub_UrlEncode(string, enc="UTF-8") {{{2
+; 来自万年书妖的Candy里的函数，用于转换编码。感谢！
+SksSub_UrlEncode(string, enc="UTF-8")
+{   ;url编码
+    enc:=trim(enc)
+    If enc=
+        Return string
+	If Strlen(String) > 200
+		string := Substr(string,1,200)
+    formatInteger := A_FormatInteger
+    SetFormat, IntegerFast, H
+    VarSetCapacity(buff, StrPut(string, enc))
+    Loop % StrPut(string, &buff, enc) - 1
+    {
+        byte := NumGet(buff, A_Index-1, "UChar")
+        encoded .= byte > 127 or byte <33 ? "%" Substr(byte, 3) : Chr(byte)
+    }
+    SetFormat, IntegerFast, %formatInteger%
+    return encoded
 }
 ; =======================================================
 ; GUI {{{1
