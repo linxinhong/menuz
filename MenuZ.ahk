@@ -26,6 +26,7 @@ Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
 Global SystemEnv ; 用于保持所有系统变量名
+Global IconState := IniReadValue(INI,"config","HideIcon",0)
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
 Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
@@ -212,6 +213,7 @@ MenuZShow(type)
 }
 ShowMenu(Max)
 {
+/*
 	Count := MenuZItem[0]
 	Loop,% Count
 	{
@@ -219,6 +221,7 @@ ShowMenu(Max)
 			idx++
 	}
 	idx+=2
+*/
 	MouseGetPos,PosX,PosY
 	;If Idx <= %Max% ; 短菜单
 	;{
@@ -591,6 +594,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 		LoopString := ReplaceVar(A_LoopField)
 		If Not RegExMatch(LoopString,"[^\s\t]") OR ( RegExMatch(LoopString,"i)^ClassName=") And IsClass )
 			Continue
+		;Msgbox % A_LoopField "`n" LoopString "`n" ReplaceVar("%vim%")
 		If Not RegExMatch(MenuMode,"i)\{mode\}")
 			If ( Not RegExMatch(LoopString,MatchMode) ) And  ( Not RegExMatch(LoopString,MatchModeAll) )
 				Continue
@@ -664,19 +668,20 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		LoopString := A_LoopField
 		If Not RegExMatch(LoopString,"[^\s\t]") 
 			Continue
-		If RegExMatch(LoopString,">>[^=]*=")
+		;If RegExMatch(LoopString,">>[^=]*=")
+		If RegExMatch(LoopString,"^[^=]*\\[^=]*=")
 		{
-			OLkey := Substr(LoopString,1,RegExMatch(LoopString,">>")-1)
+			OLkey := Substr(LoopString,1,RegExMatch(LoopString,"\\")-1)
 			SubMenuName := OLKey
 			LoopString := OLKey
-			MatchOLKey := "^" ToMatch(OLKey) ">>"
+			MatchOLKey := "^" ToMatch(OLKey) "\\"
 			SubMenuItems := ""
 			Loop,Parse,ALLItem,`n,`r
 			{
 				If RegExMatch(A_LoopField,MatchOLKey)
 					SubMenuItems .= RegExReplace(A_LoopField,MatchOLKey) "`n"
 			}
-			If CreateMenu(Type,SubMenuName,SubMenuItems)
+			If CreateMenu(Type,SubMenuName,SubMenuItems,True)
 				IsSubMenuName := True
 			Else
 				Continue
@@ -701,7 +706,10 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			ALLINI := SaveALLINI
 			Continue
 		}
-		ItemKey := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
+		If RegExMatch(LoopString,"=")
+			ItemKey := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
+		Else
+			ItemKey := LoopString
 		ItemValue := SubStr(LoopString,RegExMatch(LoopString,"=")+1)
 		If RegExMatch(ItemKey,"^-$")
 			MenuZAddL(MenuName)
@@ -826,8 +834,10 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 		}
 		Return ReturnIcon(MenuName,ItemKey,IconPath,IconIndex)
 	}
+	If IconState = 2
+		Return
 	; {icon:icons\google.ico|2|16}
-	If RegExMatch(ItemValue,"i)\{icon:[^\}]*\}",Icon)
+	If RegExMatch(ItemValue,"i)\{icon:[^\}]*\}",Icon) And ( IconState <> 1 )
 	{
 		Icon := SubStr(icon,7,strlen(icon)-7)
 		Loop,Parse,Icon,|
@@ -857,7 +867,7 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 			Return ReturnIcon(MenuName,ItemKey,IconPath,IconIndex)
 		}
 	}
-	If IniReadValue(INI,"config","DefaultIcon",1)
+	If IniReadValue(INI,"config","DefaultIcon",1) And ( IconState <> 1 )
 		Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%Icons%\default.ico"),1)
 	else
 		Return 
@@ -871,7 +881,7 @@ ReturnIcon(MenuName,ItemKey,IconPath,IconIndex,Iconsize="")
 		Menu,%MenuName%,Icon,%ItemKey%,%IconPath%,%IconIndex%,%Iconsize%
 		If ErrorLevel
 		{
-			If FileExist(IconPath)
+			If FileExist(IconPath) 
 			{
 				IconPath := ReplaceVar("%systemroot%\system32\Shell32.dll")
 				IconIndex := 3
@@ -980,60 +990,63 @@ GetOpenWithList(Type,AutoINI)
 ; 替换变量
 ReplaceVar(str)
 {
-	If Not RegExMatch(str,"%[^%]*%")
-		return str
 	Pos := 1
 	Loop
 	{
-		PosNext := RegExMatch(str,"i)%[^%]*%",UserVar,Pos)
-		If PosNext
+		Pos := RegExMatch(str,"i)%[^%]*%",UserVar,Pos)
+		If Pos
 		{
 			var := SubStr(UserVar,2,Strlen(UserVar)-2)
-			MatchVar := "i)" ToMatch(var)
-			If RegExMatch("apps",Matchvar)
+			If Strlen(var) = 0
+				Break
+			Else If RegExMatch(var,"i)^apps$")
 			{
 				Env := A_ScriptDir "\apps"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
-			If RegExMatch("config",Matchvar)
+			Else If RegExMatch(var,"i)^config$")
 			{
 				Env := A_ScriptDir "\config"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
-			If RegExMatch("Extensions",Matchvar)
+			Else If RegExMatch(var,"i)^Extensions$")
 			{
 				Env := A_ScriptDir "\Extensions"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
-			If RegExMatch("icons",Matchvar)
+			Else If RegExMatch(var,"i)^icons$")
 			{
 				Env := A_ScriptDir  "\icons"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
-			If RegExMatch("Scriptdir",Matchvar)
+			Else If RegExMatch(var,"i)^Scriptdir$")
 			{
 				Env := A_ScriptDir 
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
-			MatchVar := "i)\t" ToMatch(Var) "\t"
-			If RegExMatch(SystemEnv,MatchVar)
-			{
-				EnvGet,Env,%var%
-				Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
-			}
 			Else
 			{
-				Loop,Parse,ALLINI,`n,`r
+				MatchVar := "i)\t" ToMatch(Var) "\t"
+				If RegExMatch(SystemEnv,MatchVar)
 				{
-					INIRead,Env,%A_LoopField%,Env,%Var%
-					IF Env <> ERROR
-						str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+					EnvGet,Env,%var%
+					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+				}
+				Else
+				{
+					ALLINI := MenuZLoadINI()
+					Loop,Parse,ALLINI,`n,`r
+					{
+						INIRead,Env,%A_LoopField%,Env,%Var%
+						IF Env <> ERROR
+							str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+					}
 				}
 			}
 		}
 		Else
 			Break
-		Pos := PosNext + Strlen(Env)
+		Pos += Strlen(Env)
 	}
 	Return str
 }
@@ -1467,6 +1480,7 @@ StringByMfile(Switch,MfileArray)
 	Else
 		IsTemplate := False
 	idx := 0
+	MatchTemplate := "i)(\bindex\b)|(\bfile\b)|(\bdir\b)|(\bext\b)|(\bNameNoExt\b)|(\bName\b)|(\bdrive\b)|(<br>)|(<tab>)"
 	Loop,Parse,RString,`n,`r
 	{
 		If Strlen(A_LoopField) = 0
@@ -1479,6 +1493,34 @@ StringByMfile(Switch,MfileArray)
 		If IsTemplate
 		{
 			Splitpath,A_LoopField,Name,Dir,Ext,NameNoExt,Drive
+			Pos := 1
+			Index := A_Index
+			NewRString := Template
+			Loop
+			{
+				Pos := RegExMatch(NewRString,MatchTemplate,Switch,Pos)
+				If Not Pos
+					Break
+				else If RegExMatch(Switch,"i)^file$")
+					RString := A_LoopField
+				else If RegExMatch(Switch,"i)^index$")
+					RString := Index 
+				else If RegExMatch(Switch,"i)^name$")
+					RString := Name
+				else If RegExMatch(Switch,"i)^dir$")
+					RString := Dir
+				else If RegExMatch(Switch,"i)^ext$")
+					RString := Ext
+				else If RegExMatch(Switch,"i)drive")
+					RString := Drive
+				else If RegExMatch(Switch,"i)<br>")
+					RString := "`r`n"
+				else If RegExMatch(Switch,"i)<tab>")
+					RString := A_Tab
+				NewRString := RegExReplace(NewRString,ToMatch(Switch),ToReplace(RString),"",1,Pos)
+				Pos += strlen(RString)
+			}
+/*
 			NewRString := Template
 			NewRString := RegExReplace(NewRString,"i)file",A_LoopField)
 			NewRString := RegExReplace(NewRString,"i)Index",A_Index)
@@ -1489,6 +1531,7 @@ StringByMfile(Switch,MfileArray)
 			NewRString := RegExReplace(NewRString,"i)drive",Drive)
 			NewRString := RegExReplace(NewRString,"i)<br>","`r`n")
 			NewRString := RegExReplace(NewRString,"i)<tab>",A_Tab)
+*/
 		}
 		Else
 			NewRString := A_LoopField
@@ -1604,9 +1647,14 @@ ToMatch(str)
 	str := RegExReplace(str,"\+|\?|\.|\*|\{|\}|\(|\)|\||\^|\$|\[|\]|\\","\$0")
 	Return RegExReplace(str,"\s","\s")
 }
+; ToReplace(str) {{{2
+; 
 ToReplace(str)
 {
-	return  Regexreplace(str,"\$","$$$$")
+	If RegExMatch(str,"\$")
+		return  Regexreplace(str,"\$","$$$$")
+	Else
+		Return str
 }
 StringReplaceF(String,SearchText,ReplaceText="",ReplaceAll="ALL")
 {

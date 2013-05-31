@@ -52,7 +52,7 @@ ExtensionsAHK := A_ScriptDir "\Extensions\Extensions.ahk"
 If IsParam AND (IsView OR IsAdd)
 {
 	MZA_Temp := A_Temp "\MenuZapp\"
-	7za := A_ScriptDir "\apps\7za\7za.exe"
+	7za := A_ScriptDir "\apps\7zip\7za.exe"
 	If FileExist(ParamString) And RegExMatch(ParamString,"i)\.mza$")
 	{
 		Mousegetpos,x,y
