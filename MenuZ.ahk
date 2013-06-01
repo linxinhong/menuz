@@ -1436,9 +1436,9 @@ StringByMfile(Switch,MfileArray)
 		Return MfileArray["All"]
 	; 如果没有加:  则{mfile:=aaa}识别的选项就是=aaa，需要加冒号，以便进行循环分析
 	opt := RegExReplace(opt,"mfile")
-	If RegExMatch(opt,"i):((filename)|(file)|(dirname)|(dir)|(allname)|(all))",List)
+	If RegExMatch(opt,"i)(:((filename)|(file)|(dirname)|(dir)|(allname)|(all))$)|(:((filename)|(file)|(dirname)|(dir)|(allname)|(all))(?=:))",List)
 	{
-		RString := MfileArray[Substr(List,2)]
+		RString := MfileArray[RegExReplace(List,":")]
 		opt := RegExReplace(opt,ToMatch(List),"",outputvar,1)
 	}
 	Else
@@ -1449,7 +1449,7 @@ StringByMfile(Switch,MfileArray)
 		opt := RegExReplace(opt,ToMatch(In))
 		In := Substr(In,3)
 		Loop,Parse,In,|
-			Include .= "(" ToMatch(A_LoopField) ")|"
+			Include .= "(" RegExReplace(RegExReplace(A_LoopField,"\s"),"\+|\?|\.|\*|\{|\}|\(|\)|\||\[|\]|\\","\$0") ")|"
 		InClude := "i)" SubStr(Include,1,Strlen(Include)-1)
 	}
 	Else
@@ -1460,7 +1460,7 @@ StringByMfile(Switch,MfileArray)
 		opt := RegExReplace(opt,ToMatch(Ex))
 		Ex := Substr(Ex,3)
 		Loop,Parse,Ex,|
-			Exclude .= "(" ToMatch(A_LoopField) ")|"
+			Exclude .= "(" RegExReplace(RegExReplace(A_LoopField,"\s"),"\+|\?|\.|\*|\{|\}|\(|\)|\||\[|\]|\\","\$0") ")|"
 		ExClude := "i)" SubStr(Exclude,1,Strlen(Exclude)-1)
 	}
 	Else
