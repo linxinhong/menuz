@@ -3,15 +3,15 @@
 #include %A_ScriptDir%\Extensions\qrcode.ahk
 #include %A_ScriptDir%\Extensions\ShowClass.ahk
 #include %A_ScriptDir%\Extensions\brace.ahk
-#include %A_ScriptDir%\Extensions\GetModuleFileNameEx.ahk
 #include %A_ScriptDir%\Extensions\test.ahk
 #include %A_ScriptDir%\Extensions\print.ahk
+#include %A_ScriptDir%\Extensions\GetModuleFileNameEx.ahk
 /*
 [ExtensionsTime]
 brace=20130601161146
 CreateDirByName=20130601161146
 GetLink=20130601161146
-GetModuleFileNameEx=20130601161146
+GetModuleFileNameEx=20130524112730
 print=20130601161146
 qrcode=20130601161146
 ShowClass=20130601161146
