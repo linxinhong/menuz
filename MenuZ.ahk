@@ -20,13 +20,13 @@ Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
 Global SaveCtrl ;保存当前选择的Ctrl
 Global ItemString ;保存执行的菜单内容
+Global IconState 
 Global RunOnce := ""
 Global RunMode := ""
 Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
 Global SystemEnv ; 用于保持所有系统变量名
-Global IconState := IniReadValue(INI,"config","HideIcon",0)
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
 Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
@@ -544,6 +544,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 	Select  := ReturnTypeString(SaveString)
 	WinGetClass,ThisClass,AHK_ID %SaveID%
 	ControlGetFocus,ThisControl,AHK_ID %SaveID%
+	IconState := IniReadValue(INI,"config","HideIcon",0)
 	MatchThisClass := ToMatch(ThisClass)
 	MatchThisControl := ToMatch(ThisControl)
 	MatchThisType  := ToMatch(Select.Type)
