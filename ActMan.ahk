@@ -182,7 +182,10 @@ GotoInstall(Dir)
 		IniItems := IniReadValue(InstallAppINI,A_LoopField)
 		Loop,Parse,IniItems,`n,`r
 		{
-			Key := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
+			If RegExMatch(A_LoopField,"=")
+				Key := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
+			Else
+				Key := A_LoopField
 			Value := IniReadValue(InstallAppINI,Section,key)
 			IniWrite,%Value%,%MenuZINI%,%Section%,%Key%
 		}
