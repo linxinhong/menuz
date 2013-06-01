@@ -172,6 +172,7 @@ GotoInstall(Dir)
 	}
 	INIContent := IniReadValue(InstallAppINI)
 	MZA_Name := IniReadValue(InstallAppINI,"Apps","Name")
+	MZA_Author := IniReadValue(InstallAppINI,"Apps","Author")
 	MZA_Dir := A_ScriptDir "\Apps\MZA"
 	Loop,Parse,INIContent,`n,`r
 	{
@@ -188,6 +189,8 @@ GotoInstall(Dir)
 	}
 	If Not InStr(FileExist(MZA_Dir),"D")
 		Filecreatedir,%MZA_Dir%
+	If RegExMatch(MZA_Author,"i)^Array$")
+		Return
 	Filecopy,%InstallAppINI%,%MZA_Dir%\%MZA_Name%.ini,1
 }
 ; ShowMZAInfo(Dir) {{{2
