@@ -350,7 +350,7 @@ Select()
 						Msgbox,4,,检测到MZA包，是否安装？
 						IfMsgbox Yes
 						{
-							Run %A_ScriptDir%\Actman.ahk /v %Select%
+							Run %A_ScriptDir%\Actman.ahk /a %Select%
 							Return
 						}
 					}
