@@ -15,6 +15,7 @@ Coordmode,Mouse,Screen
 ;Fileencoding,UTF-8
 Global INI := ScriptDir "\menuz.ini" ; 配置文件
 Global ALLINI ; 每次读取INI时，会对ALLINI的文件列表进行遍历读取，默认只有INI
+Global TempINI ; 临时调用的INI
 Global SaveString ;全局变量SaveString，在哪里都可以被读取
 Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
@@ -27,8 +28,9 @@ Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
 Global SystemEnv ; 用于保持所有系统变量名
+Global AHK_BIEnv ; 用于保持所有系统变量名
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
-Menu, Tray, NoStandard
+;Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
 Menu, Tray, Add,调试窗口(&D),debuggui
 Menu, Tray, Add,隐藏运行列表(&H),debuggui
@@ -57,6 +59,7 @@ Else
 MenuZLoadINI()
 ; 用于保持所有系统变量名
 SystemEnv := A_Tab "ALLUSERSPROFILE" A_Tab "APPDATA" A_Tab "CD" A_Tab "CMDCMDLINE" A_Tab "CMDEXTVERSION" A_Tab "COMPUTERNAME" A_Tab "COMSPEC" A_Tab "DATE" A_Tab "ERRORLEVEL" A_Tab "HOMEDRIVE" A_Tab "HOMEPATH" A_Tab "HOMESHARE" A_Tab "LOGONSERVER" A_Tab "NUMBER_OF_PROCESSORS" A_Tab "OS" A_Tab "PATH" A_Tab "PATHEXT" A_Tab "PROCESSOR_ARCHITECTURE" A_Tab "PROCESSOR_IDENTFIER" A_Tab "PROCESSOR_LEVEL" A_Tab "PROCESSOR_REVISION" A_Tab "PROMPT" A_Tab "RANDOM" A_Tab "SYSTEMDRIVE" A_Tab "SYSTEMROOT" A_Tab "TEMP" A_Tab "TIME" A_Tab "USERDOMAIN" A_Tab "USERNAME" A_Tab "USERPROFILE" A_Tab "WINDIR" A_Tab
+AHK_BIEnv := A_Tab "A_WorkingDir" A_Tab "A_ScriptDir" A_Tab "A_ScriptName" A_Tab "A_ScriptFullPath" A_Tab "A_ScriptHwnd" A_Tab "A_LineNumber" A_Tab "A_LineFile" A_Tab "A_ThisFunc" A_Tab "A_ThisLabel" A_Tab "A_AhkVersion" A_Tab "A_AhkPath" A_Tab "A_IsUnicode" A_Tab "A_IsCompiled" A_Tab "A_ExitReason" A_Tab "A_YYYY" A_Tab "A_MM" A_Tab "A_DD" A_Tab "A_MMMM" A_Tab "A_MMM" A_Tab "A_DDDD" A_Tab "A_DDD" A_Tab "A_WDay" A_Tab "A_YDay" A_Tab "A_YWeek" A_Tab "A_Hour" A_Tab "A_Min" A_Tab "A_Sec" A_Tab "A_MSec" A_Tab "A_Now" A_Tab "A_NowUTC" A_Tab "A_TickCount" A_Tab "A_IsSuspended" A_Tab "A_IsPaused" A_Tab "A_IsCritical" A_Tab "A_BatchLines" A_Tab "A_TitleMatchMode" A_Tab "A_TitleMatchModeSpeed" A_Tab "A_DetectHiddenWindows" A_Tab "A_DetectHiddenText" A_Tab "A_AutoTrim" A_Tab "A_StringCaseSense" A_Tab "A_FileEncoding" A_Tab "A_FormatInteger" A_Tab "A_FormatFloat" A_Tab "A_KeyDelay" A_Tab "A_WinDelay" A_Tab "A_ControlDelay" A_Tab "A_MouseDelay" A_Tab "A_DefaultMouseSpeed" A_Tab "A_RegView" A_Tab "A_IconHidden" A_Tab "A_IconTip" A_Tab "A_IconFile" A_Tab "A_IconNumber" A_Tab "A_TimeIdle" A_Tab "A_TimeIdlePhysical" A_Tab "A_Gui" A_Tab "A_GuiControl" A_Tab "A_GuiWidth" A_Tab "A_GuiHeight" A_Tab "A_GuiX" A_Tab "A_GuiY" A_Tab "A_GuiEvent" A_Tab "A_EventInfo" A_Tab "A_ThisHotkey" A_Tab "A_PriorHotkey" A_Tab "A_PriorKey" A_Tab "A_TimeSinceThisHotkey" A_Tab "A_TimeSincePriorHotkey" A_Tab "A_Temp" A_Tab "A_OSType" A_Tab "A_OSVersion" A_Tab "A_Is64bitOS" A_Tab "A_PtrSize" A_Tab "A_Language" A_Tab "A_ComputerName" A_Tab "A_UserName" A_Tab "A_WinDir" A_Tab "A_ProgramFiles" A_Tab "A_AppData" A_Tab "A_AppDataCommon" A_Tab "A_Desktop" A_Tab "A_DesktopCommon" A_Tab "A_StartMenu" A_Tab "A_StartMenuCommon" A_Tab "A_Programs" A_Tab "A_ProgramsCommon" A_Tab "A_Startup" A_Tab "A_StartupCommon" A_Tab "A_MyDocuments" A_Tab "A_IsAdmin" A_Tab "A_ScreenWidth" A_Tab "A_ScreenHeight" A_Tab "A_IPAddress1" A_Tab "A_IPAddress2" A_Tab "A_IPAddress3" A_Tab "A_IPAddress4" A_Tab "A_Cursor" A_Tab "A_CaretX" A_Tab "A_CaretY" A_Tab 
 return
 OpenListLines:
 	Listlines
@@ -73,14 +76,23 @@ return
 ; 注册热键ini文件的Hotkey段
 MenuZHotkey()
 {
-	Iniread,hotkeys,%INI%,Hotkey
-	Loop,Parse,hotkeys,`n,`r
+	;Iniread,hotkeys,%INI%,Hotkey
+	HotKeys := IniReadValue(INI,"Hotkey")
+	If Not Strlen(Hotkeys)
 	{
-		If RegExMatch(A_LoopField,"i)^[^=]*=\{mode[^\{\}]*\}")
-			mzKey := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
+		INIWrite,{mode},%INI%,Hotkey,!``
+		HotKeys := IniReadValue(INI,"Hotkey")
+	}
+	Loop,Parse,Hotkeys,`n,`r
+	{
+		If RegExMatch(A_LoopField,"=")
+			MZKey := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
 		Else
-			mzKey := A_LoopField
-		Hotkey,%mzKey%,<MenuZRun>,On,UseErrorLevel
+			MZKey := A_LoopField
+		Value := IniReadValue(INI,"Hotkey",MZKey,"{mode}")
+		If Not RegExMatch(Value,"\{mode[^\{\}]*\}")
+			INIWrite,{mode},%INI%,Hotkey,%MZKey%
+		Hotkey,%MZKey%,<MenuZRun>,On,UseErrorLevel
 		If ErrorLevel
 			Msgbox % mzKey "热键定义有误"
 	}
@@ -91,17 +103,17 @@ MenuZLoadINI()
 	ALLINI := INI "`n"
 	If IniReadValue(INI,"Config","ReadALLINI",0)
 	{
-		ConfigDir := A_ScriptDir "\Config\*.*"
+		ConfigDir := A_ScriptDir "\Config"
 		If FileExist(ConfigDir)
 		{
-			Loop,%ConfigDir%,0,1
+			Loop,%ConfigDir%\*.*,0,1
 			{
 				If RegExMatch(A_LoopFileName,"i)\.ini$")
 					ALLINI .= A_LoopFileFullPath "`n" 
 			}
 		}
 	}
-	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"))
+	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),True)
 	Return ALLINI
 }
 ;/======================================================================/
@@ -565,6 +577,8 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 		If FileExist(LoopINI) 
 		{
 			TypeItem .= IniReadValue(LoopINI,Type) "`n" ; 最佳匹配优先
+			If OnlyType 
+				Continue
 			ALLSection := IniReadValue(LoopINI) ; 读取当前循环INI的值
 			Loop,Parse,ALLSection,`n,`;r
 			{
@@ -690,7 +704,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		If RegExMatch(LoopString,"i)\{SubMenu:[^\{\}]*\}",Switch)
 		{
 			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
-			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,ALLINI,True))
+			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,TempINI,True))
 				IsSubMenuName := True
 			Else
 				Continue
@@ -701,10 +715,9 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
 				INIFile := A_ScriptDir "\" INIFile
 			Splitpath,INIFile,,,,INIType
-			SaveALLINI := ALLINI
-			ALLINI := INIFile
+			;SaveALLINI := ALLINI
+			TempINI := INIFile
 			CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
-			ALLINI := SaveALLINI
 			Continue
 		}
 		If RegExMatch(LoopString,"=")
@@ -989,9 +1002,13 @@ GetOpenWithList(Type,AutoINI)
 ;/======================================================================/
 ; ReplaceVar(str){{{2
 ; 替换变量
-ReplaceVar(str)
+ReplaceVar(str,OnlyINI=False)
 {
 	Pos := 1
+	If OnlyINI
+		LoopINI := INI
+	Else
+		LoopINI := MenuZLoadINI()
 	Loop
 	{
 		Pos := RegExMatch(str,"i)%[^%]*%",UserVar,Pos)
@@ -1000,7 +1017,19 @@ ReplaceVar(str)
 			var := SubStr(UserVar,2,Strlen(UserVar)-2)
 			If Strlen(var) = 0
 				Break
-			Else If RegExMatch(var,"i)^apps$")
+			IsUserVar := False
+			Loop,Parse,LoopINI,`n,`r
+			{
+				INIRead,Env,%A_LoopField%,Env,%Var%
+				IF Env <> ERROR
+				{
+					IsUserVar := True
+					Break
+				}
+			}
+			If IsUserVar ; 用户变量最大
+				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+			Else If RegExMatch(var,"i)^apps$")  ; MZ内置变量
 			{
 				Env := A_ScriptDir "\apps"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
@@ -1027,21 +1056,18 @@ ReplaceVar(str)
 			}
 			Else
 			{
+				; AHK内置变量
+				; 系统变量
 				MatchVar := "i)\t" ToMatch(Var) "\t"
-				If RegExMatch(SystemEnv,MatchVar)
+				If RegExMatch(AHK_BIEnv,MatchVar)
+				{
+					Env := %Var%
+					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+				}
+				Else If RegExMatch(SystemEnv,MatchVar)
 				{
 					EnvGet,Env,%var%
 					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
-				}
-				Else
-				{
-					ALLINI := MenuZLoadINI()
-					Loop,Parse,ALLINI,`n,`r
-					{
-						INIRead,Env,%A_LoopField%,Env,%Var%
-						IF Env <> ERROR
-							str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
-					}
 				}
 			}
 		}
