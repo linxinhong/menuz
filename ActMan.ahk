@@ -1,161 +1,181 @@
 ﻿#SingleInstance,Force
 #NoTrayIcon
 ;FileEncoding,UTF-8
-Global urllink
-Global Apps
 Setworkingdir,A_ScriptDir 
 Coordmode,Tooltip,Screen
+Global ParamString := Object()
+; 读取参数{{{1
 If 0 > 0
 {
+	Idx := 0
 	Loop,%0%
 	{
 		param := %A_Index%
 		If A_Index = 1
 		{
-			If RegExMatch(param,"i)/g")
-			{
-				IsGUI := True   ;打开ActMan的GUI界面
-				Continue
-			}
-	 		If RegExMatch(param,"i)/v")
-			{
-				IsView := True  ;查看MZA的信息
-				Continue
-			}
 			If RegExMatch(param,"i)/a")
 			{
-				IsAdd := True   ;安装MZA（静默，无显示）
+				IsAdd := True   ;安装MZA
 				Continue
 			}
 			If RegExMatch(param,"i)/s")
 			{
-				IsSelect := True ;选择MZA包，并查看
-				Continue
-			}
-			If RegExMatch(param,"i)/p")
-			{
-				IsSelect := True ;传入MZA包列表，批量安装
+				IsSilent:= True ;安装MZA(静默，无显示)
 				Continue
 			}
 			If RegExMatch(param,"i)/u")
 			{
-				IsSelect := True ;卸载某MZA包 可以用 | 分隔
+				IsUninstall:= True ;卸载某MZA包 用空格分开
 				Continue
 			}
 		}
-		ParamString .= param A_Space
+		idx++
+		ParamString[idx] := param
 	}
 	IsParam := True
-	ParamString := Substr(ParamString,1,Strlen(ParamString)-1)
+	ParamString[0] := idx
 }
-ExtensionsAHK := A_ScriptDir "\Extensions\Extensions.ahk"
-If IsParam AND (IsView OR IsAdd)
+; 执行判断和功能 {{{1
+If IsParam 
+{
+	If IsAdd
+		MZA_Add(ParamString)
+	Else If IsSilent
+		MZA_Add(ParamString,1)
+	Else If IsUninstall 
+		MZA_Del(ParamString)
+}
+CheckExtension()
+Return
+; CheckExtension() {{{1
+;=============  ActMan扩展管理  ==============;
+CheckExtension()
+{
+	ExtensionsAHK := A_ScriptDir "\Extensions\Extensions.ahk"
+	If Not FileExist(ExtensionsAHK)
+		FileAppend,,%ExtensionsAHK%
+	FileRead,Extensions,%ExtensionsAHK%
+	; 验证Extensions里Include的插件是否存在
+	Loop,Parse,Extensions,`n,`r
+	{
+		If Not RegExMatch(A_LoopField,"i)^#include")
+			Continue
+		If FileExist(RegExReplace(A_LoopField,"i)^#include\s%A_ScriptDir%\\"))
+		{
+			Match := "\t" ToMatch(SubStr(A_LoopField,35)) "\t"
+			If Not RegExMatch(ExtensionsNames,Match)
+				NewExtensions .= A_LoopField "`r`n"
+			ExtensionsNames .= A_Tab Substr(A_LoopField,35) A_Tab
+		}
+	}
+	; 清理无用#include
+	Filedelete,%ExtensionsAHK%
+	FileAppend,%NewExtensions%,%ExtensionsAHK%
+	; 查询是否有新插件加入
+	Loop,%A_ScriptDir%\Extensions\*.ahk
+	{
+		If RegExMatch(A_LoopFileName,"i)^Extensions\.ahk$")
+			Continue
+		Else
+		{
+			Match := "\t" ToMatch(A_LoopFileName) "\t"
+			If Not RegExMatch(ExtensionsNames,Match)
+				FileAppend,#include `%A_ScriptDir`%\Extensions\%A_LoopFileName%`n , %ExtensionsAHK%
+		}
+	}
+	; 保存修改时间
+	SaveTime := "/*`r`n[ExtensionsTime]`r`n" 
+	Loop,%A_ScriptDir%\Extensions\*.ahk
+	{
+		If RegExMatch(A_LoopFileName,"i)^Extensions.ahk$")
+			Continue
+		FileGetTime,ExtensionsTime,%A_LoopFileFullPath%,M
+		SaveTime .= RegExReplace(A_LoopFileName,"i)\.ahk$") "=" ExtensionsTime "`r`n"
+	}
+	SaveTime .= "*/`r`n"
+	FileAppend,%SaveTime%,%ExtensionsAHK%
+	FileRead,Extensions,%ExtensionsAHK%
+	Run MenuZ.ahk
+}
+;=============== MZA 管理部分 ===============;
+; MZA_GUI() {{{1
+MZA_GUI()
+{
+}
+; MZA_Add(Param,Mode=0) {{{1
+MZA_Add(Param,Mode=0)
 {
 	MZA_Temp := A_Temp "\MenuZapp\"
 	7za := A_ScriptDir "\apps\7zip\7za.exe"
-	If FileExist(ParamString) And RegExMatch(ParamString,"i)\.mza$")
+	Count := Param[0]
+	Loop,%Count%
 	{
-		Mousegetpos,x,y
-		Tooltip,加载中,%x%,%y%,10
-		Fileremovedir,%MZA_Temp%,1
-		Runwait %7za% x "%ParamString%" -o%MZA_Temp% -tzip -r ,,Hide UseErrorLevel
-		If ErrorLevel
-			Msgbox 安装失败 `n %7za% x %ParamString% -o%MZA_Temp% -tzip -r
-		InstallAppINI := MZA_Temp "installapps.ini"
-		Tooltip,,,,10
+		ThisFile := Param[A_Index]
+		If FileExist(ThisFile) And RegExMatch(ThisFile,"i)\.mza$")
+		{
+			Splitpath,ThisFile,,,,MZA_Name
+			MZA_WorkDir := MZA_Temp MZA_Name
+			Mousegetpos,x,y
+			Fileremovedir,%MZA_WorkDir%,1
+			Runwait %7za% x "%ThisFile%" -o"%MZA_WorkDir%" -tzip -r ,,Hide UseErrorLevel
+			If ErrorLevel
+			{
+				Msgbox %MZA_Name% 解压失败
+				Continue
+			}
+			Loop,%MZA_WorkDir%\*.*,1,1
+			{
+				FileTree .= A_LoopFileFullPath "`n"
+				If RegExMatch(A_LoopFileName,"i)^installapps.ini$")
+					InstallAppsINI := A_LoopFileFullPath
+			}
+			Splitpath,InstallAppsINI,,InstallAppsDir
+			MatchAppsDir := ToMatch(InstallAppsDir)
+			Idx := 0
+			Loop,Parse,FileTree,`n
+			{
+				If Strlen(A_LoopField) = 0 
+					Continue
+				FilePath := RegExReplace(RegExReplace(A_LoopField,MatchAppsDir),"^\\")
+				If Strlen(FilePath) = 0
+					Continue
+				if InStr(FileExist(A_LoopField),"D")
+					FilePath .= "\"
+				If RegExMatch(FilePath,"i)^((apps\\)|(icons\\)|(config\\)|(Extensions\\)|(InstallApps.INI))$")
+					Continue
+				idx++
+				Iniwrite,%FilePath%,%InstallAppsINI%,FileTree,%idx%
+			}
+			Iniwrite,%idx%,%InstallAppsINI%,FileTree,0
+			FileTree := ""
+			If Mode
+				GotoInstall(InstallAppsDir)
+			Else
+				ShowMZAInfo(InstallAppsDir)	
+		}
 	}
+	;Fileremovedir,%MZA_Temp%,1
 }
-Else
-	InstallAppINI:= A_ScriptDir "\installapps.ini"
-MenuZINI := A_ScriptDir "\Menuz.ini"
-MenuZINIBak:= A_ScriptDir "\Menuz_bak.ini"
-If IsParam
+; GotoInstall(Dir) {{{2
+GotoInstall(Dir)
 {
-If FileExist(InstallAppINI) 
-{
-	apps := IniReadValue(InstallAppINI)
-	If strlen(apps) > 0
-	{
-		Installapp_name := IniReadValue(InstallAppINI,"apps","name")
-		Installapp_Author := IniReadValue(InstallAppINI,"apps","Author")
-		urlname := IniReadValue(InstallAppINI,"apps","urlname")
-		urllink := IniReadValue(InstallAppINI,"apps","urladdr")
-		Dest := IniReadValue(InstallAppINI,"Dest")
-		Installapp_url := "<a href=""" urllink """>" urlname "</a>"
-		Gui,Installapp:New 
-		GUi,Installapp:+hwndInstallid
-		Gui,Installapp:Add,Text,x5 y10 w50 h20,插件名:
-		Gui,Installapp:Add,Text,x60 y10 w400 h20,%Installapp_name%
-		Gui,Installapp:Add,Text,x5 y40 w50 h20,打  包:
-		Gui,Installapp:Add,Text,x60 y40 w400 h20 ,%Installapp_Author%
-		Gui,Installapp:Add,Text,x5 y70 w50 h20,链  接:
-		Gui,Installapp:Add,Link,x60 y70 w400 h20 ,%Installapp_URL%
-		Gui,Installapp:Add,Edit,x5 y100 w390 h100 readonly,%Dest%
-		Gui,Installapp:Add,Button,x200 y210 w70 gaddtomenuz,添加(&Y)
-		Gui,Installapp:Add,Button,x290 y210 w70 gexitapp,取消(&X)
-		GUi,Show,w400 h245,MenuZ App
-	}
-}
-Else
-	Msgbox 此扩展包无效
-}
-If Not FileExist(ExtensionsAHK)
-	FileAppend,,%ExtensionsAHK%
-FileRead,Extensions,%ExtensionsAHK%
-; 验证Extensions里Include的插件是否存在
-Loop,Parse,Extensions,`n,`r
-{
-	If Not RegExMatch(A_LoopField,"i)^#include")
-			Continue
-	If FileExist(RegExReplace(A_LoopField,"i)^#include\s%A_ScriptDir%\\"))
-	{
-		
-		Match := "\t" ToMatch(SubStr(A_LoopField,35)) "\t"
-		If Not RegExMatch(ExtensionsNames,Match)
-			NewExtensions .= A_LoopField "`r`n"
-		ExtensionsNames .= A_Tab Substr(A_LoopField,35) A_Tab
-	}
-}
-; 清理无用#include
-Filedelete,%ExtensionsAHK%
-FileAppend,%NewExtensions%,%ExtensionsAHK%
-; 查询是否有新插件加入
-Loop,%A_ScriptDir%\Extensions\*.ahk
-{
-	If RegExMatch(A_LoopFileName,"i)^Extensions\.ahk$")
-		Continue
-	Else
-	{
-		Match := "\t" ToMatch(A_LoopFileName) "\t"
-		If Not RegExMatch(ExtensionsNames,Match)
-			FileAppend,#include `%A_ScriptDir`%\Extensions\%A_LoopFileName%`n , %ExtensionsAHK%
-	}
-}
-; 保存修改时间
-SaveTime := "/*`r`n[ExtensionsTime]`r`n" 
-Loop,%A_ScriptDir%\Extensions\*.ahk
-{
-	If RegExMatch(A_LoopFileName,"i)^Extensions.ahk$")
-		Continue
-	FileGetTime,ExtensionsTime,%A_LoopFileFullPath%,M
-	SaveTime .= RegExReplace(A_LoopFileName,"i)\.ahk$") "=" ExtensionsTime "`r`n"
-}
-SaveTime .= "*/`r`n"
-FileAppend,%SaveTime%,%ExtensionsAHK%
-FileRead,Extensions,%ExtensionsAHK%
-
-;Msgbox % "现在有插件列表`n" Extensions
-Run MenuZ.ahk
-; ToMatch(str) {{{2
-; 正则表达式转义
-return
-addtomenuz:
-	FileCopyDir,%MZA_Temp%,%A_ScriptDir%,1
+	MenuZINI := A_ScriptDir "\MenuZ.ini"
+	MenuZINIBak := A_ScriptDir "\MenuZ_Bak.ini"
 	FileCopy,%MenuZINI%,%MenuZINIBak%,1
+	FileCopyDir,%Dir%,%A_ScriptDir%,1
 	InstallAppINI:= A_ScriptDir "\installapps.ini"
-	Loop,Parse,Apps,`n,`r
+	Loop,8
 	{
-		If RegExMatch(A_LoopField,"i)(^apps$)|(^dest$)")
+		If FileExist(InstallAppINI)
+			Break
+		Sleep,250
+	}
+	INIContent := IniReadValue(InstallAppINI)
+	MZA_Name := IniReadValue(InstallAppINI,"Apps","Name")
+	MZA_Dir := A_ScriptDir "\Apps\MZA"
+	Loop,Parse,INIContent,`n,`r
+	{
+		If RegExMatch(A_LoopField,"i)^(apps)|(dest)|(filetree)$")
 			Continue
 		Section := A_LoopField
 		IniItems := IniReadValue(InstallAppINI,A_LoopField)
@@ -166,25 +186,86 @@ addtomenuz:
 			IniWrite,%Value%,%MenuZINI%,%Section%,%Key%
 		}
 	}
-	If Not IsParam
+	If Not InStr(FileExist(MZA_Dir),"D")
+		Filecreatedir,%MZA_Dir%
+	Filecopy,%InstallAppINI%,%MZA_Dir%\%MZA_Name%.ini,1
+}
+; ShowMZAInfo(Dir) {{{2
+ShowMZAInfo(Dir)
+{
+	InstallAppINI := Dir "\installapps.ini"
+	Installapp_name := IniReadValue(InstallAppINI,"apps","name")
+	Installapp_Author := IniReadValue(InstallAppINI,"apps","Author")
+	urlname := IniReadValue(InstallAppINI,"apps","urlname")
+	urllink := IniReadValue(InstallAppINI,"apps","urladdr")
+	Dest := IniReadValue(InstallAppINI,"Dest")
+	Installapp_url := "<a href=""" urllink """>" urlname "</a>"
+	Gui,Installapp:New 
+	GUi,Installapp:+hwndInstallid
+	Gui,Installapp:Add,Text,x5 y10 w50 h20,插件名:
+	Gui,Installapp:Add,Text,x60 y10 w400 h20,%Installapp_name%
+	Gui,Installapp:Add,Text,x5 y40 w50 h20,打  包:
+	Gui,Installapp:Add,Text,x60 y40 w400 h20 ,%Installapp_Author%
+	Gui,Installapp:Add,Text,x5 y70 w50 h20,链  接:
+	Gui,Installapp:Add,Link,x60 y70 w400 h20 ,%Installapp_URL%
+	Gui,Installapp:Add,Edit,x5 y100 w390 h100 readonly,%Dest%
+	Gui,Installapp:Add,Button,x200 y210 w70 gInstallMZA,添加(&Y)
+	Gui,Installapp:Add,Button,x290 y210 w70 gGuiClose,取消(&X)
+	GUi,Show,w400 h245,MenuZ App
+	Loop ; Block 脚本，等侍决定
 	{
-		Msgbox,4,,安装完毕，是否删除installapps.ini?
-		IfMsgbox,Yes
-			Filedelete,%InstallAppINI%
+		IfWinExist,AHK_Id %Installid%
+			Sleep,100
+		Else
+			Break
 	}
-	Else
-			Filedelete,%InstallAppINI%
-	exitapp
-return
-exitapp:
-	exitapp
-return
+	Return
+	InstallMZA:
+		GoSub,GUIClose
+		GotoInstall(Dir)	
+	Return
+	GuiClose:
+		Gui,Destroy
+	Return
+}
+; MZA_Del(Param) {{{1
+MZA_Del(Param)
+{
+	Count := Param[0]
+	Loop,%Count%
+	{
+		ThisMZA := param[A_Index]
+		UnInstallINI := A_ScriptDir "\Apps\MZA\" ThisMZA ".ini"
+		If FileExist(UnInstallINI)
+		{
+			DeleteFileCount := IniReadValue(UnInstallINI,"FileTree","0",0)
+			DeleteFileMsg := ""
+			Loop,%DeleteFileCount%
+				DeleteFileMsg .= IniReadValue(UnInstallINI,"FileTree",A_Index) "`n"
+			Msgbox,4,"删除MZA", % "为免出错,MenuZ.ini中的配置内容请自行删除`n请确认要删除的内容`n" DeleteFileMsg
+			IfMsgbox No
+				Continue
+		}
+		Else
+			Msgbox % "MZA """ ThisMZA """ 已经删除或不存在"
+		Loop,%DeleteFileCount%
+		{
+			DeleteFile := IniReadValue(UnInstallINI,"FileTree",A_Index)
+			If InStr(FileExist(DeleteFile),"D")
+				FileRemoveDir,%DeleteFile%,1
+			If FileExist(DeleteFile)
+				Filedelete,%DeleteFile%
+		}
+		Filedelete,%UnInstallINI%
+	}
+}
+; ToMatch(str) {{{1
 ToMatch(str)
 {
 	str := RegExReplace(str,"\+|\?|\.|\*|\{|\}|\(|\)|\||\^|\$|\[|\]|\\","\$0")
 	Return RegExReplace(str,"\s","\s")
 }
-; IniReadValue(INIFile,Section="",Key="",Default="")
+; IniReadValue(INIFile,Section="",Key="",Default="") {{{1
 IniReadValue(INIFile,Section="",Key="",Default="")
 {
 	IniRead,Value,%INIFile%,%Section%,%Key%
