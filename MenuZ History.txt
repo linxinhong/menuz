@@ -1,4 +1,9 @@
 [History]
+2013-6-2
+++ 添加对AHK的内置变量的支持，如%A_Desktop%,%A_AHKPATH%等
+** 修复ActMan读取INI可能出现的问题
+** 修复ReplaceVar()函数出现死循环的错误
+
 2013-6-1
 ++ 支持在制作MZA时，整个文件夹压缩
 ++ 支持批量安装MZA ActMan.ahk /a  "aaa.mza" "bbb.mza"
