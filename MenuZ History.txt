@@ -1,9 +1,10 @@
 [History]
 2013-6-1
 ++ 支持在制作MZA时，整个文件夹压缩
-++ 支持批量安装MZA
-++ 支持删除MZA功能，不需要进行手动删除文件
+++ 支持批量安装MZA ActMan.ahk /a  "aaa.mza" "bbb.mza"
+++ 支持删除MZA功能，不需要进行手动删除文件 ActMan.ahk /u "MZA名"
    但为了防止误删，MenuZ.ini中的内容需要自行删除
+   关于MZA删除时所用的MZA名，可以查看 Apps\MZA\ 目录下的ini
 ++ 添加对选择内容的UrlEncode支持，用法{select[utf-8]}
    !!感谢万年书妖的帮助和函数
 ++ 增加多文件的过滤支持锚(^文件名的开始)和($文件名的结束)
