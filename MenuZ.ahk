@@ -703,7 +703,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		}
 		If RegExMatch(LoopString,"i)\{SubMenu:[^\{\}]*\}",Switch)
 		{
-			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
+			SubMenuName := ReplaceVar(Substr(Switch,10,strlen(Switch)-10))
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,TempINI,True))
 				IsSubMenuName := True
 			Else
@@ -711,15 +711,21 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		}
 		If RegExMatch(LoopString,"i)\{inifile:[^\{\}]*\}",Switch)
 		{
-			INIFile := Substr(Switch,10,strlen(Switch)-10)
+			INIFile := ReplaceVar(Substr(Switch,10,strlen(Switch)-10))
+			SubMenuName := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
 			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
 				INIFile := A_ScriptDir "\" INIFile
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
-			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+			;Msgbox % SubMenuName  "`n" ReadToMenuZItem(INIType,INIFile,True)
+			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+			{
+				IsSubMenuName := True
 				TempINI := SaveALLINI
-			Continue
+			}
+			Else
+				Continue
 		}
 		If RegExMatch(LoopString,"=")
 			ItemKey := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
