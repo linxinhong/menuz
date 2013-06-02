@@ -16,6 +16,7 @@ Coordmode,Mouse,Screen
 Global INI := ScriptDir "\menuz.ini" ; 配置文件
 Global ALLINI ; 每次读取INI时，会对ALLINI的文件列表进行遍历读取，默认只有INI
 Global TempINI := INI ; 临时调用的INI
+Global EditINI := INI ; 临时调用的INI
 Global SaveString ;全局变量SaveString，在哪里都可以被读取
 Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
@@ -221,7 +222,6 @@ MenuZShow(type)
 	Menu,MenuZ,Add,%AddMenu%,<Config>
 	Menu,MenuZ,Icon,%AddMenu%,%A_ScriptDir%\Icons\setting.ico
 	ShowMenu(2)
-	
 }
 ShowMenu(Max)
 {
@@ -248,8 +248,17 @@ ShowMenu(Max)
 	Menu,MenuZ,Show,%xp%,%yp%
 }
 <config>:
-	Run %INI%
+	Config()
 return
+Config()
+{
+	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+	Loop,Parse,EditINI,%A_Tab%
+	{
+		If FileExist(A_LoopField)
+			Run %Editor% "%A_LoopField%"
+	}
+}
 ; 限制文本长度为Count,不够的话，补充空格
 AdjustString(String,Count)
 {
@@ -718,6 +727,9 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
+			MatchINIFile := "\t" ToMatch(INIFile) "\t"
+			If Not RegExMatch(EditINI,MatchINIFile)
+				EditINI .= A_Tab INIFile A_Tab
 			;Msgbox % SubMenuName  "`n" ReadToMenuZItem(INIType,INIFile,True)
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 			{
