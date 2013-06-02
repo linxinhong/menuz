@@ -30,6 +30,7 @@ Global MenuZItem := Object()
 Global MenuZTextType := Object()
 Global SystemEnv ; 用于保持所有系统变量名
 Global AHK_BIEnv ; 用于保持所有系统变量名
+Global DebugCount
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
 ;Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
@@ -46,8 +47,9 @@ If DebugMode = 1
 */
 MenuZTextType()
 ; 有参数时为只运行一次
-if 0 = 1 
+if 0 > 0 
 {
+	Menu,Tray,NoIcon
 	RunOnce = %1%
 	if RegExMatch(RunOnce,"i)\{mode[^\{\}]*\}")  ; 参数必须为{mode}或者{mode:xxxx}
 		MeunzRun()
@@ -146,6 +148,7 @@ MeunzRun()
 		Type := GetType(SaveString)
 		MenuZInit(Type)
 		MenuZLoadINI()
+		DebugCount := ""
 		CreateMenu(Type,"MenuZ",ReadToMenuZItem(Type,ALLINI))
 		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") )
 		{
@@ -155,7 +158,6 @@ MeunzRun()
 		Else
 			MenuZShow(Type)
 	}
-	
 }
 ; MenuZInit(type) {{{2
 MenuZInit(Type)
@@ -618,7 +620,6 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 		LoopString := ReplaceVar(A_LoopField)
 		If Not RegExMatch(LoopString,"[^\s\t]") OR ( RegExMatch(LoopString,"i)^ClassName=") And IsClass )
 			Continue
-		;Msgbox % A_LoopField "`n" LoopString "`n" ReplaceVar("%vim%")
 		If Not RegExMatch(MenuMode,"i)\{mode\}")
 			If ( Not RegExMatch(LoopString,MatchMode) ) And  ( Not RegExMatch(LoopString,MatchModeAll) )
 				Continue
@@ -712,7 +713,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		}
 		If RegExMatch(LoopString,"i)\{SubMenu:[^\{\}]*\}",Switch)
 		{
-			SubMenuName := ReplaceVar(Substr(Switch,10,strlen(Switch)-10))
+			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,TempINI,True))
 				IsSubMenuName := True
 			Else
@@ -720,7 +721,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		}
 		If RegExMatch(LoopString,"i)\{inifile:[^\{\}]*\}",Switch)
 		{
-			INIFile := ReplaceVar(Substr(Switch,10,strlen(Switch)-10))
+			INIFile := Substr(Switch,10,strlen(Switch)-10)
 			SubMenuName := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
 			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
 				INIFile := A_ScriptDir "\" INIFile
@@ -816,18 +817,19 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 {
 	If Ext
 	{
+		Shell32DLL := A_WinDir "\system32\shell32.dll"
 		If RegExMatch(ItemValue,"^Multifiles$")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"135")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"135")
 		If RegExMatch(ItemValue,"^Drive$")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"9")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"9")
 		If RegExMatch(ItemValue,"^Folder$")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"4")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"4")
 		If RegExMatch(ItemValue,"i)^\.lnk$")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"264")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"264")
 		If RegExMatch(ItemValue,"^NoExt$")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"291")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"291")
 		If RegExMatch(ItemValue,"^[^\.]")
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"268")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"268")
 		If RegExMatch(ItemValue,"i)\.exe")
 		{
 			Match := ToMatch(ItemValue) "\|"
@@ -837,12 +839,13 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 		RegRead,file,HKEY_CLASSES_ROOT,%ItemValue%
 		RegRead,IconString,HKEY_CLASSES_ROOT,%file%\DefaultIcon
 		If ErrorLevel
-			Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%systemroot%\system32\Shell32.dll"),"291")
+			Return ReturnIcon(MenuName,ItemKey,Shell32DLL,"291")
 		If RegExMatch(IconString,"%1")
 		{
 			RegRead,IconPath,HKCR,%file%\Shell\Open\Command
 			tm = `"
-			IconPath := LTrim(ReplaceVar(IconPath),tm)
+			;IconPath := LTrim(ReplaceVar(IconPath),tm)
+			IconPath := LTrim(IconPath,tm)
 			Loop,% Strlen(IconPath)
 			{
 				Loop_exec := SubStr(IconPath,1,strlen(IconPath)-A_Index)
@@ -855,7 +858,8 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 		}
 		Else
 		{
-			IconPath := RegExReplace(ReplaceVar(IconString),",-?\d*","")
+			; IconPath := RegExReplace(ReplaceVar(IconString),",-?\d*","")
+			IconPath := RegExReplace(IconString,",-?\d*","")
 			IconIndex := RegExReplace(IconString,".*,","")
 		}
 		If Not RegExMatch(IconIndex,"^-?\d*$")
@@ -901,7 +905,7 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 		}
 	}
 	If IniReadValue(INI,"config","DefaultIcon",1) And ( IconState <> 1 )
-		Return ReturnIcon(MenuName,ItemKey,ReplaceVar("%Icons%\default.ico"),1)
+		Return ReturnIcon(MenuName,ItemKey,"Icons\default.ico",1)
 	else
 		Return 
 }
@@ -910,13 +914,13 @@ ReturnIcon(MenuName,ItemKey,IconPath,IconIndex,Iconsize="")
 {
 	If ItemKey
 	{
-		IconPath := ReplaceVar(IconPath)
+		;IconPath := ReplaceVar(IconPath)
 		Menu,%MenuName%,Icon,%ItemKey%,%IconPath%,%IconIndex%,%Iconsize%
 		If ErrorLevel
 		{
 			If FileExist(IconPath) 
 			{
-				IconPath := ReplaceVar("%systemroot%\system32\Shell32.dll")
+				IconPath := A_WinDir "\system32\shell32.dll"
 				IconIndex := 3
 				Menu,%MenuName%,Icon,%ItemKey%,%IconPath%,%IconIndex%,%Iconsize%
 			}
@@ -1030,6 +1034,8 @@ ReplaceVar(str,OnlyINI=False)
 		LoopINI := MenuZLoadINI()
 	Loop
 	{
+		;Tooltip % DebugCount
+		;DebugCount++
 		Pos := RegExMatch(str,"i)%[^%]*%",UserVar,Pos)
 		If Pos
 		{
@@ -1039,11 +1045,14 @@ ReplaceVar(str,OnlyINI=False)
 			IsUserVar := False
 			Loop,Parse,LoopINI,`n,`r
 			{
-				INIRead,Env,%A_LoopField%,Env,%Var%
-				IF Env <> ERROR
+				If FileExist(A_LoopField)
 				{
-					IsUserVar := True
-					Break
+					INIRead,Env,%A_LoopField%,Env,%Var%
+					IF Env <> ERROR
+					{
+						IsUserVar := True
+						Break
+					}
 				}
 			}
 			If IsUserVar ; 用户变量最大
@@ -1241,14 +1250,12 @@ ReplaceSwitch(MenuString)
 					EncodeMode := SubStr(SelectSwitch,9,strlen(SelectSwitch)-10)
 					RString := SksSub_UrlEncode(Select.String,EncodeMode)
 				}
-			/*
-			Else
-			{
-				; {Select:RegEx} {{{3
-				var := "%" SubStr(SelectSwitch,9,strlen(SelectSwitch)-9) "%"
-				RegExMatch(Select.String,ReplaceVar(var),RString)
-			}
-			*/
+				Else
+				{
+					; {Select:RegEx} {{{3
+					var := "%" SubStr(SelectSwitch,9,strlen(SelectSwitch)-9) "%"
+					RegExMatch(Select.String,ReplaceVar(var),RString)
+				}
 		}
 		; {box} {{{3
 		If RegExMatch(Switch,"i)\{box:[^\{\}]*\}")

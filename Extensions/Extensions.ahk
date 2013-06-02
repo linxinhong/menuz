@@ -3,9 +3,9 @@
 #include %A_ScriptDir%\Extensions\qrcode.ahk
 #include %A_ScriptDir%\Extensions\ShowClass.ahk
 #include %A_ScriptDir%\Extensions\brace.ahk
-#include %A_ScriptDir%\Extensions\test.ahk
 #include %A_ScriptDir%\Extensions\print.ahk
 #include %A_ScriptDir%\Extensions\GetModuleFileNameEx.ahk
+#include %A_ScriptDir%\Extensions\test.ahk
 /*
 [ExtensionsTime]
 brace=20130601161146

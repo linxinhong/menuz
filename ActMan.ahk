@@ -98,10 +98,6 @@ CheckExtension()
 	Run MenuZ.ahk
 }
 ;=============== MZA 管理部分 ===============;
-; MZA_GUI() {{{1
-MZA_GUI()
-{
-}
 ; MZA_Add(Param,Mode=0) {{{1
 MZA_Add(Param,Mode=0)
 {

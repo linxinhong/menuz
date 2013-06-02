@@ -2,6 +2,7 @@
 2013-6-2
 ++ 添加对AHK的内置变量的支持，如%A_Desktop%,%A_AHKPATH%等
 ++ MenuZconfig.ahk支持读取INI(还不能投入使用)
+++ 添加默认编辑器的设置，用于编辑INI
 ** 修复ActMan读取INI可能出现的问题
 ** 修复ReplaceVar()函数出现死循环的错误
 -- 简化{inifile} 的机制，现在不用引用二级INI时，还要强制写一个{submenu}
