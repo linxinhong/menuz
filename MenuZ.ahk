@@ -15,7 +15,7 @@ Coordmode,Mouse,Screen
 ;Fileencoding,UTF-8
 Global INI := ScriptDir "\menuz.ini" ; 配置文件
 Global ALLINI ; 每次读取INI时，会对ALLINI的文件列表进行遍历读取，默认只有INI
-Global TempINI ; 临时调用的INI
+Global TempINI := INI ; 临时调用的INI
 Global SaveString ;全局变量SaveString，在哪里都可以被读取
 Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
@@ -715,9 +715,10 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
 				INIFile := A_ScriptDir "\" INIFile
 			Splitpath,INIFile,,,,INIType
-			;SaveALLINI := ALLINI
+			SaveALLINI := TempINI
 			TempINI := INIFile
-			CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+				TempINI := SaveALLINI
 			Continue
 		}
 		If RegExMatch(LoopString,"=")
