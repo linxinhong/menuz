@@ -190,7 +190,7 @@ GotoInstall(Dir)
 		Filecreatedir,%MZA_Dir%
 	If RegExMatch(MZA_Author,"i)^Array$")
 		Return
-	Filecopy,%InstallAppINI%,%MZA_Dir%\%MZA_Name%.ini,1
+	Filemove,%InstallAppINI%,%MZA_Dir%\%MZA_Name%.ini,1
 }
 ; ShowMZAInfo(Dir) {{{2
 ShowMZAInfo(Dir)

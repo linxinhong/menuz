@@ -116,7 +116,9 @@ MenuZLoadINI()
 			}
 		}
 	}
-	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),True)
+	If IniReadValue(INI,"Config","OpenWithList")
+		ALLINI .= A_ScriptDir "\config\auto.ini`n"
+	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),1)
 	Return ALLINI
 }
 ;/======================================================================/
@@ -137,6 +139,7 @@ MenuZTextType()
 }
 ;/======================================================================/
 <MenuZRun>:
+	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),True)
 	MeunzRun()
 return
 ; MeunzRun() {{{2
@@ -147,8 +150,9 @@ MeunzRun()
 	{
 		Type := GetType(SaveString)
 		MenuZInit(Type)
+		If IniReadValue(INI,"Config","OpenWithList",0)
+			GetOpenWithList(Type,"config\auto.ini")
 		MenuZLoadINI()
-		DebugCount := ""
 		CreateMenu(Type,"MenuZ",ReadToMenuZItem(Type,ALLINI))
 		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") )
 		{
@@ -223,35 +227,25 @@ MenuZShow(type)
 		AddMenu := BeforeConfig "管理多文件关联菜单"
 	Menu,MenuZ,Add,%AddMenu%,<Config>
 	Menu,MenuZ,Icon,%AddMenu%,%A_ScriptDir%\Icons\setting.ico
-	ShowMenu(2)
+	ShowMenu()
 }
-ShowMenu(Max)
+ShowMenu()
 {
-/*
-	Count := MenuZItem[0]
-	Loop,% Count
-	{
-		If RegExMatch(MenuZItem[A_Index],"^\[MenuZ\]")
-			idx++
-	}
-	idx+=2
-*/
 	MouseGetPos,PosX,PosY
-	;If Idx <= %Max% ; 短菜单
-	;{
-		xp := PosX - 50 > 0 ? PosX - 50 : 0
-		yp := PosY - 12 > 0 ? PosY - 12 : 0
-	;}
-	;Else  ;长菜单
-	;{
-	;	xp := PosX - 50 > 0 ? PosX - 50 : 0
-	;	yp := PosY - ((A_OSVersion=WIN_7?40:30)*(idx/2)) - (A_OSVersion=WIN_7?40:0)
-	;}
+/*
+	xp := PosX - 50 > 0 ? PosX - 50 : 0
+	yp := PosY - 12 > 0 ? PosY - 12 : 0
+*/
+	INI_xp := INIReadValue(INI,"config","xp",50)
+	INI_yp := INIReadValue(INI,"config","yp",12)
+	xp := PosX - INI_xp > 0 ? PosX - INI_xp : 0
+	yp := PosY - INI_yp > 0 ? PosY - INI_yp : 0
 	Menu,MenuZ,Show,%xp%,%yp%
 }
 <config>:
 	Config()
 return
+; Config() {{{2
 Config()
 {
 	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
@@ -457,7 +451,7 @@ Interpreter(Item="")
 				Pid := ToRun(Block1,RunMode)
 				If Pid
 					WinWaitActive,AHK_PID %PID%,,1
-				If Not ErrorLevel OR Not Pid
+				If Not ErrorLevel OR Pid
 				{	
 					Block2 := Substr(LoopItemValue,Pos+strlen(Switch)+1)
 					If RegExMatch(Switch,"i)\{send:key\}")
@@ -489,7 +483,7 @@ Interpreter(Item="")
 				Pid := ToRun(Block1,RunMode)
 				If pid
 					WinWaitActive,AHK_PID %PID%,,1
-				If Not ErrorLevel OR Not Pid
+				If Not ErrorLevel OR Pid
 				{	
 					Block2 := Substr(ItemValue,Pos+strlen(Switch)+1)
 					If RegExMatch(Switch,"i)\{send:key\}")
@@ -693,24 +687,9 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		LoopString := A_LoopField
 		If Not RegExMatch(LoopString,"[^\s\t]") 
 			Continue
+		If RegExMatch(LoopString,"i)^sid=")
+			Continue
 		;If RegExMatch(LoopString,">>[^=]*=")
-		If RegExMatch(LoopString,"^[^=]*\\[^=]*=")
-		{
-			OLkey := Substr(LoopString,1,RegExMatch(LoopString,"\\")-1)
-			SubMenuName := OLKey
-			LoopString := OLKey
-			MatchOLKey := "^" ToMatch(OLKey) "\\"
-			SubMenuItems := ""
-			Loop,Parse,ALLItem,`n,`r
-			{
-				If RegExMatch(A_LoopField,MatchOLKey)
-					SubMenuItems .= RegExReplace(A_LoopField,MatchOLKey) "`n"
-			}
-			If CreateMenu(Type,SubMenuName,SubMenuItems,True)
-				IsSubMenuName := True
-			Else
-				Continue
-		}
 		If RegExMatch(LoopString,"i)\{SubMenu:[^\{\}]*\}",Switch)
 		{
 			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
@@ -737,6 +716,23 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 				IsSubMenuName := True
 				TempINI := SaveALLINI
 			}
+			Else
+				Continue
+		}
+		If RegExMatch(LoopString,"^[^=]*\\[^=]*=")
+		{
+			OLkey := Substr(LoopString,1,RegExMatch(LoopString,"\\")-1)
+			SubMenuName := OLKey
+			LoopString := OLKey
+			MatchOLKey := "^" ToMatch(OLKey) "\\"
+			SubMenuItems := ""
+			Loop,Parse,ALLItem,`n,`r
+			{
+				If RegExMatch(A_LoopField,MatchOLKey)
+					SubMenuItems .= RegExReplace(A_LoopField,MatchOLKey) "`n"
+			}
+			If CreateMenu(Type,SubMenuName,SubMenuItems,True)
+				IsSubMenuName := True
 			Else
 				Continue
 		}
@@ -933,7 +929,6 @@ ReturnIcon(MenuName,ItemKey,IconPath,IconIndex,Iconsize="")
 ; 根据注册表获取当前扩展名的对应打开列表，并保存到MeunZ.auto文件中
 GetOpenWithList(Type,AutoINI)
 {
-/*
 	IniRead,sid,%AutoINI%,%Type%,sid
 	If RegExMatch(sid,"\d{8}") And substr(sid,1,1)
 	{
@@ -945,7 +940,6 @@ GetOpenWithList(Type,AutoINI)
 		sid := "10000000"
 		IniWrite,10000000,%AutoINI%,%Type%,sid
 	}
-*/
 	RegRead,exec,HKCR,%Type%
 	RegRead,exec,HKCR,%exec%\Shell\Open\Command
 	m .= exec "`n"
@@ -1016,8 +1010,8 @@ GetOpenWithList(Type,AutoINI)
 				s := RegExReplace(Loop_Str,"%1","{file:path}")
 			Else
 				s := Loop_Str . " {file:path}"
-			;If s and k
-			;IniWrite,%s%,%AutoINI%,%Type%,%k%
+			If s and k
+			IniWrite,%s%,%AutoINI%,%Type%,%k%
 		}
 	}
 	Return S
