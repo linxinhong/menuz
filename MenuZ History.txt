@@ -1,4 +1,10 @@
 [History]
+2013-6-4
+++ 在配置config段添加到控制出菜单的鼠标偏移选项xp yp
+++ 编辑INI，可以打开所有当前类型关联的INI，包括用{inifile}引用的ini文件
+** 修复{send:key}的逻辑错误，打开某程序后，等待并{send:key}
+   如：notepad=%systemroot%\notepad.exe {send:key} ^v
+
 2013-6-2
 ++ 添加对AHK的内置变量的支持，如%A_Desktop%,%A_AHKPATH%等
 ++ MenuZconfig.ahk支持读取INI(还不能投入使用)
