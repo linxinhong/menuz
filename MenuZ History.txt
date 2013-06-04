@@ -2,6 +2,8 @@
 2013-6-4
 ++ 在配置config段添加到控制出菜单的鼠标偏移选项xp yp
 ++ 编辑INI，可以打开所有当前类型关联的INI，包括用{inifile}引用的ini文件
+++ 可以通过修改MenuZ.ini中config的OpenWithList=1来打开系统打开方式的自动菜单
+** 修改系统打开方式的菜单为二级(感谢jian.w)
 ** 修复{send:key}的逻辑错误，打开某程序后，等待并{send:key}
    如：notepad=%systemroot%\notepad.exe {send:key} ^v
 
