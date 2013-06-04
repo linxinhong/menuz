@@ -995,7 +995,7 @@ GetOpenWithList(Type,AutoINI)
 	{
 		If A_LoopField
 		{
-			Loop_str := RegExReplace(ReplaceVar(A_LoopField),"""","",outvar,1)
+			Loop_str := RegExReplace(ReplaceVar(A_LoopField),"""")
 			Loop,% Strlen(Loop_str)
 			{
 				Loop_exec := SubStr(Loop_str,1,strlen(Loop_str)-A_Index)
@@ -1007,11 +1007,11 @@ GetOpenWithList(Type,AutoINI)
 			Else
 				Continue
 			If RegExMatch(Loop_Str,"%1")
-				s := RegExReplace(Loop_Str,"%1","{file:path}")
+				s := RegExReplace(Loop_Str,"%1","""{file:path}""")
 			Else
-				s := Loop_Str . " {file:path}"
+				s := Loop_Str . " ""{file:path}"" "
 			If s and k
-			IniWrite,%s%,%AutoINI%,%Type%,%k%
+				IniWrite,%s%,%AutoINI%,%Type%,系统打开方式(&S)\%k%
 		}
 	}
 	Return S
