@@ -23,14 +23,16 @@ Global SaveID ;保存当前选择的AHK_ID
 Global SaveCtrl ;保存当前选择的Ctrl
 Global ItemString ;保存执行的菜单内容
 Global IconState 
-Global RunOnce := ""
+Global RunOnce := IniReadValue(INI,"Config","RunOnce",0)
 Global RunMode := ""
+Global RunMode := ""
+Global ExecMode := ""
 Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
 Global SystemEnv ; 用于保持所有系统变量名
 Global AHK_BIEnv ; 用于保持所有系统变量名
-Global DebugCount
+;Global DebugCount
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
 ;Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
@@ -39,28 +41,29 @@ Menu, Tray, Add,隐藏运行列表(&H),debuggui
 Menu, Tray, Add,重启(&R),ScriptReload
 Menu, Tray, Add,退出(&X),Quit
 Menu, Tray, icon,%A_Scriptdir%\icons\menuz.ico
-Inidelete,%INI%,Hide
-/*
-IniRead,DebugMode,%IN%,Config,Debug
-If DebugMode = 1
-	GoSub,debuggui
-*/
+;Inidelete,%INI%,Hide
 MenuZTextType()
-; 有参数时为只运行一次
-if 0 > 0 
+MenuZLoadINI()
+RunOnce := IniReadValue(INI,"Config","RunOnce",0)
+If RunOnce
 {
 	Menu,Tray,NoIcon
-	RunOnce = %1%
-	if RegExMatch(RunOnce,"i)\{mode[^\{\}]*\}")  ; 参数必须为{mode}或者{mode:xxxx}
-		MeunzRun()
-	Else
-		Return
+	RunMode := Strlen(1) ? %1% : "{mode}"
+	MenuZRun()
 }
 Else
-	MenuZHotkey() ; 无参数时加载热键
-; 加载所有可用的INI文件
-MenuZLoadINI()
-; 用于保持所有系统变量名
+{
+	MenuZHotkey() ; 非运行一次时加载热键
+	if 0 > 0  ;判断传参
+	{
+		RunMode = %1%
+		; 参数必须为{mode}或者{mode:xxxx}
+		if RegExMatch(RunMode,"i)\{mode[^\{\}]*\}")  
+			MenuZRun()
+	}
+}
+
+; 用于保存所有系统变量名
 SystemEnv := A_Tab "ALLUSERSPROFILE" A_Tab "APPDATA" A_Tab "CD" A_Tab "CMDCMDLINE" A_Tab "CMDEXTVERSION" A_Tab "COMPUTERNAME" A_Tab "COMSPEC" A_Tab "DATE" A_Tab "ERRORLEVEL" A_Tab "HOMEDRIVE" A_Tab "HOMEPATH" A_Tab "HOMESHARE" A_Tab "LOGONSERVER" A_Tab "NUMBER_OF_PROCESSORS" A_Tab "OS" A_Tab "PATH" A_Tab "PATHEXT" A_Tab "PROCESSOR_ARCHITECTURE" A_Tab "PROCESSOR_IDENTFIER" A_Tab "PROCESSOR_LEVEL" A_Tab "PROCESSOR_REVISION" A_Tab "PROMPT" A_Tab "RANDOM" A_Tab "SYSTEMDRIVE" A_Tab "SYSTEMROOT" A_Tab "TEMP" A_Tab "TIME" A_Tab "USERDOMAIN" A_Tab "USERNAME" A_Tab "USERPROFILE" A_Tab "WINDIR" A_Tab
 AHK_BIEnv := A_Tab "A_WorkingDir" A_Tab "A_ScriptDir" A_Tab "A_ScriptName" A_Tab "A_ScriptFullPath" A_Tab "A_ScriptHwnd" A_Tab "A_LineNumber" A_Tab "A_LineFile" A_Tab "A_ThisFunc" A_Tab "A_ThisLabel" A_Tab "A_AhkVersion" A_Tab "A_AhkPath" A_Tab "A_IsUnicode" A_Tab "A_IsCompiled" A_Tab "A_ExitReason" A_Tab "A_YYYY" A_Tab "A_MM" A_Tab "A_DD" A_Tab "A_MMMM" A_Tab "A_MMM" A_Tab "A_DDDD" A_Tab "A_DDD" A_Tab "A_WDay" A_Tab "A_YDay" A_Tab "A_YWeek" A_Tab "A_Hour" A_Tab "A_Min" A_Tab "A_Sec" A_Tab "A_MSec" A_Tab "A_Now" A_Tab "A_NowUTC" A_Tab "A_TickCount" A_Tab "A_IsSuspended" A_Tab "A_IsPaused" A_Tab "A_IsCritical" A_Tab "A_BatchLines" A_Tab "A_TitleMatchMode" A_Tab "A_TitleMatchModeSpeed" A_Tab "A_DetectHiddenWindows" A_Tab "A_DetectHiddenText" A_Tab "A_AutoTrim" A_Tab "A_StringCaseSense" A_Tab "A_FileEncoding" A_Tab "A_FormatInteger" A_Tab "A_FormatFloat" A_Tab "A_KeyDelay" A_Tab "A_WinDelay" A_Tab "A_ControlDelay" A_Tab "A_MouseDelay" A_Tab "A_DefaultMouseSpeed" A_Tab "A_RegView" A_Tab "A_IconHidden" A_Tab "A_IconTip" A_Tab "A_IconFile" A_Tab "A_IconNumber" A_Tab "A_TimeIdle" A_Tab "A_TimeIdlePhysical" A_Tab "A_Gui" A_Tab "A_GuiControl" A_Tab "A_GuiWidth" A_Tab "A_GuiHeight" A_Tab "A_GuiX" A_Tab "A_GuiY" A_Tab "A_GuiEvent" A_Tab "A_EventInfo" A_Tab "A_ThisHotkey" A_Tab "A_PriorHotkey" A_Tab "A_PriorKey" A_Tab "A_TimeSinceThisHotkey" A_Tab "A_TimeSincePriorHotkey" A_Tab "A_Temp" A_Tab "A_OSType" A_Tab "A_OSVersion" A_Tab "A_Is64bitOS" A_Tab "A_PtrSize" A_Tab "A_Language" A_Tab "A_ComputerName" A_Tab "A_UserName" A_Tab "A_WinDir" A_Tab "A_ProgramFiles" A_Tab "A_AppData" A_Tab "A_AppDataCommon" A_Tab "A_Desktop" A_Tab "A_DesktopCommon" A_Tab "A_StartMenu" A_Tab "A_StartMenuCommon" A_Tab "A_Programs" A_Tab "A_ProgramsCommon" A_Tab "A_Startup" A_Tab "A_StartupCommon" A_Tab "A_MyDocuments" A_Tab "A_IsAdmin" A_Tab "A_ScreenWidth" A_Tab "A_ScreenHeight" A_Tab "A_IPAddress1" A_Tab "A_IPAddress2" A_Tab "A_IPAddress3" A_Tab "A_IPAddress4" A_Tab "A_Cursor" A_Tab "A_CaretX" A_Tab "A_CaretY" A_Tab 
 return
@@ -116,9 +119,9 @@ MenuZLoadINI()
 			}
 		}
 	}
-	If IniReadValue(INI,"Config","OpenWithList")
-		ALLINI .= A_ScriptDir "\config\auto.ini`n"
 	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),1)
+	If IniReadValue(INI,"Config","OpenWithList")
+		ALLINI .= "`n" A_ScriptDir "\config\auto.ini"
 	Return ALLINI
 }
 ;/======================================================================/
@@ -140,10 +143,10 @@ MenuZTextType()
 ;/======================================================================/
 <MenuZRun>:
 	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),True)
-	MeunzRun()
+	MenuzRun()
 return
-; MeunzRun() {{{2
-MeunzRun()
+; MenuzRun() {{{2
+MenuzRun()
 {
 	MenuZPos["MenuZ"] := 1
 	If Select()
@@ -154,7 +157,7 @@ MeunzRun()
 			GetOpenWithList(Type,"config\auto.ini")
 		MenuZLoadINI()
 		CreateMenu(Type,"MenuZ",ReadToMenuZItem(Type,ALLINI))
-		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") )
+		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") ) And IniReadValue(INI,"Config","OnlyOneToRun",1)
 		{
 			Item := MenuZItem[1]
 			Interpreter(Item)
@@ -249,11 +252,17 @@ return
 Config()
 {
 	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
-	Loop,Parse,EditINI,%A_Tab%
+	If INIReadValue(INI,"Config","EditRealteINI",0)
 	{
-		If FileExist(A_LoopField)
-			Run %Editor% "%A_LoopField%"
+		Loop,Parse,EditINI,%A_Tab%
+		{
+			If FileExist(A_LoopField)
+				Run %Editor% "%A_LoopField%"
+		}
 	}
+	Else
+		Run %Editor% "%INI%"
+		
 }
 ; 限制文本长度为Count,不够的话，补充空格
 AdjustString(String,Count)
@@ -410,10 +419,13 @@ Interpreter(Item="")
 				Item := RegExReplace(Key,DelMatch)
 		}
 	}
-	ItemString := SubStr(Item,RegExMatch(Item,"=")+1)
-	; 如果全局变量RunOnce存在，则设定MenuMode为RunOnce保存的模式来执行
-	If RunOnce
-		MenuMode := RunOnce
+	If RegExMatch(Item,"=")
+		ItemString := SubStr(Item,RegExMatch(Item,"=")+1)
+	Else
+		ItemString := Item
+	; 如果全局变量RunMode存在，则设定MenuMode为RunMode保存的模式来执行
+	If RunMode
+		MenuMode := RunMode
 	Else
 	{
     	; 读取模式
@@ -432,7 +444,10 @@ Interpreter(Item="")
 	{
 		Loop, % MenuZItem[0]
 		{
-			LoopItemString := Substr(MenuZItem[A_Index],RegExMatch(MenuZIte[A_Index],"=")+1)
+			If RegExMatch(MenuZItem[A_Index],"=")
+				LoopItemString := Substr(MenuZItem[A_Index],RegExMatch(MenuZIte[A_Index],"=")+1)
+			Else
+				LoopItemString := MenuZItem[A_Index]
 			LoopItemValue  := ReplaceSwitch(LoopItemString)
 			Ifwinexist,MenuZ Debug
 			{
@@ -448,7 +463,7 @@ Interpreter(Item="")
 			If Pos
 			{
 				Block1 := SubStr(LoopItemValue,1,Pos-1)
-				Pid := ToRun(Block1,RunMode)
+				Pid := ToRun(Block1,ExecMode)
 				If Pid
 					WinWaitActive,AHK_PID %PID%,,1
 				If Not ErrorLevel OR Pid
@@ -461,7 +476,7 @@ Interpreter(Item="")
 				}
 			}
 			Else
-				ToRun(LoopItemValue,RunMode)
+				ToRun(LoopItemValue,ExecMode)
 		}
 	}
 	Else
@@ -480,7 +495,7 @@ Interpreter(Item="")
 			If Pos
 			{
 				Block1 := SubStr(ItemValue,1,Pos-1)
-				Pid := ToRun(Block1,RunMode)
+				Pid := ToRun(Block1,ExecMode)
 				If pid
 					WinWaitActive,AHK_PID %PID%,,1
 				If Not ErrorLevel OR Pid
@@ -493,10 +508,10 @@ Interpreter(Item="")
 				}
 			}
 			Else
-				ToRun(ItemValue,RunMode)
+				ToRun(ItemValue,ExecMode)
 		}
 	}
-	If Strlen(RunOnce)
+	If RunOnce
 		ExitApp
 	SaveClip =
 }
@@ -550,6 +565,21 @@ ToRun(str,Mode="")
 	EmptyMem()
 	return,runpid
 }
+RunSendKey(String,Pos)
+{
+	Block1 := SubStr(String,1,Pos-1)
+	Pid := ToRun(Block1,ExecMode)
+	If Pid
+		WinWaitActive,AHK_PID %PID%,,1
+	If Not ErrorLevel OR Pid
+	{	
+		Block2 := Substr(String,Pos+strlen(Switch)+1)
+		If RegExMatch(Switch,"i)\{send:key\}")
+			Send %Block2%
+		Else
+			SendRaw,%Block2%
+	}
+}
 ;/======================================================================/
 ; ReadToMenuZItem(Type,INI,OnlyType=False) {{{2
 ; 要获取的Section段，一般为Type、子菜单名
@@ -568,7 +598,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 	MatchClass := "i)(^" MatchThisClass "\|)|(\|" MatchThisClass "\|)|(\|" MatchThisClass "$)|(^" MatchThisClass "$)"
 	MatchControl := "i)(^" MatchThisControl "\|)|(\|" MatchThisControl "\|)|(\|" MatchThisControl "$)|(^" MatchThisControl "$)"
 	MatchType := "i)(^" MatchThistype "\|)|(\|" MatchThistype "\|)|(\|" MatchThisType "$)|(^" MatchThistype "$)"
-	MenuMode := Strlen(RunOnce) ? RunOnce : IniReadValue(INI,"Hotkey",A_Thishotkey,"{Mode}")
+	MenuMode := Strlen(RunMode) ? RunMode : IniReadValue(INI,"Hotkey",A_Thishotkey,"{Mode}")
 	MenuZItem["MenuMode"] := MenuMode
 	MatchMode    := ToMatch(MenuMode)  ; 用于后继的正则比较
 	MatchModeALL := "i)" ToMatch(Substr(MenuMode,1,strlen(MenuMode)-1)) ":all\}" ; 用于后继的ModeALL正则比较
@@ -671,7 +701,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 ; CreateMenu(Type,MenuName,ALLItem="") {{{2
 CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 {
-	RunMode := ""
+	ExecMode := ""
 	MatchItem := "i)\t" ToMatch(MenuName) "\t"
 	If RegExMatch(MenuZItem["Menus"],MatchItem) And ( Not Enforcement )
 		return False
@@ -926,7 +956,7 @@ ReturnIcon(MenuName,ItemKey,IconPath,IconIndex,Iconsize="")
 }
 ;/=======================================================================/
 ; GetOpenWithList(Type) {{{2
-; 根据注册表获取当前扩展名的对应打开列表，并保存到MeunZ.auto文件中
+; 根据注册表获取当前扩展名的对应打开列表，并保存到MenuZ.auto文件中
 GetOpenWithList(Type,AutoINI)
 {
 	IniRead,sid,%AutoINI%,%Type%,sid
@@ -1106,7 +1136,7 @@ ClearRealSwitch(String)
 	; 以下开关全部用于预处理
 	; {run} {{{3
 	If RegExMatch(String,"i)\{run:[^\}\}]*\}",MatchRun)
-		RunMode := SubStr(MatchRun,6,strlen(MatchRun)-6)
+		ExecMode := SubStr(MatchRun,6,strlen(MatchRun)-6)
 	String := RegExReplace(String,"i)\{run:[^\}\}]*\}")
 	; {hide} {{{3
 	String := RegExReplace(string,"i)\{hide}")
@@ -1208,7 +1238,7 @@ ReplaceSwitch(MenuString)
 		If Not Pos
 			Break
 		; {mfile} {{{3
-		If RegExMatch(Switch,"i)\{mfile[^\{\}]*\}",mfileSwitch)
+		Else If RegExMatch(Switch,"i)\{mfile[^\{\}]*\}",mfileSwitch)
 		{
 			If RegExMatch(Select.Type,"^Multifiles$")
 				RString := StringByMfile(mfileSwitch,MfileArray)
@@ -1216,7 +1246,7 @@ ReplaceSwitch(MenuString)
 				RString := file
 		}
 		; {file} {{{3
-		If RegExMatch(Switch,"i)\{file[^\{\}]*\}",fileSwitch)
+		Else If RegExMatch(Switch,"i)\{file[^\{\}]*\}",fileSwitch)
 		{
 			Path := File
 			RString := SubStr(fileswitch,7,strlen(fileswitch)-7)
@@ -1234,7 +1264,7 @@ ReplaceSwitch(MenuString)
 					RString := %RString%
 		}
 		; {Select} {{{3
-		If RegExMatch(Switch,"i)\{select[^\{\}]*}",SelectSwitch)
+		Else If RegExMatch(Switch,"i)\{select[^\{\}]*}",SelectSwitch)
 		{
 			If RegExMatch(SelectSwitch,"i)\{select\}")
 				RString := Select.String
@@ -1252,7 +1282,7 @@ ReplaceSwitch(MenuString)
 				}
 		}
 		; {box} {{{3
-		If RegExMatch(Switch,"i)\{box:[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{box:[^\{\}]*\}")
 		{
 			; {box:input} {{{4
 			If RegExmatch(Switch,"i)\{box:input[^\{\}]*\}")
@@ -1263,7 +1293,7 @@ ReplaceSwitch(MenuString)
 					Return
 			}
 			; {box:password} {{{4
-			If RegExmatch(Switch,"i)\{box:password[^\{\}]*\}")
+			Else If RegExmatch(Switch,"i)\{box:password[^\{\}]*\}")
 			{
 				PwdPrompt := SubStr(Switch,15,Strlen(Switch)-15)
 				Inputbox,RString,请输入内容,`n`n`t%PwdPrompt%,Hide
@@ -1271,13 +1301,13 @@ ReplaceSwitch(MenuString)
 					Return
 			}
 			; {box:file} {{{4
-			If RegExMatch(Switch,"i)\{box:file\}",bm)
+			Else If RegExMatch(Switch,"i)\{box:file\}",bm)
 			{
 				FileSelectFile,RString,M11,,查找文件
 				If ErrorLevel
 					Return
 			}
-			If RegExmatch(Switch,"i)\{box:file((open)|(save))[^\{\}]*\}")
+			Else If RegExmatch(Switch,"i)\{box:file((open)|(save))[^\{\}]*\}")
 			{
 				; Box:fileopen:Prompt,Filter,Openfile,RootDir
 				Opt := SubStr(Switch,15,Strlen(Switch)-15)
@@ -1285,16 +1315,16 @@ ReplaceSwitch(MenuString)
 				{
 					If A_Index = 1
 						fPrompt := A_LoopField
-					If A_Index = 2
+					Else If A_Index = 2
 						Filter := A_LoopField
-					If A_Index = 3
+					Else If A_Index = 3
 						Openfile := A_LoopField
-					If A_Index = 4
+					Else If A_Index = 4
 						RootDir := A_LoopField
 				}
 				If RegExmatch(Switch,"i)\{box:fileopen")
 					option := "M11"
-				If RegExmatch(Switch,"i)\{box:filesave")
+				Else If RegExmatch(Switch,"i)\{box:filesave")
 					option := "S25"
 				FileSelectFile,RString,%option%,%OpenRootDir% %Openfile%,%fPrompt%,%Filter%
 				If ErrorLevel
@@ -1304,13 +1334,13 @@ ReplaceSwitch(MenuString)
 						FileAppend,"",%RString%
 			}
 			; {box:dir} {{{4
-			If RegExMatch(Switch,"i)\{box:dir\}")
+			Else If RegExMatch(Switch,"i)\{box:dir\}")
 			{
 				FileSelectFolder,RString,,3,查找文件夹
 				If ErrorLevel
 					Return
 			}
-			If RegExMatch(Switch,"i)\{box:dir:.*\}")
+			Else If RegExMatch(Switch,"i)\{box:dir:.*\}")
 			{
 				; box:dir:Prompt,StartingFolder
 				Opt := SubStr(Switch,10,Strlen(Switch)-10)
@@ -1318,14 +1348,14 @@ ReplaceSwitch(MenuString)
 				{
 					If A_Index = 1
 						dPrompt := A_LoopField
-					If A_Index = 2
+					Else If A_Index = 2
 						StartingFolder := A_LoopField
 				}
 				FileSelectFolder,RString,%StartingFolder%,3,%dPrompt%
 			}
 		}
 		; {date} {{{3
-		If RegExMatch(Switch,"i)\{date\:?[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{date\:?[^\{\}]*\}")
 		{
 			TimeString := RegExReplace(Switch,"i)^(\{date\:?)|(\}$)")
 			Loop,Parse,TimeString,`,
@@ -1339,15 +1369,15 @@ ReplaceSwitch(MenuString)
 					FormatTime,RString
 		}
 		; {func} {{{3
-		If RegExMatch(Switch,"i)\{Func:[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{Func:[^\{\}]*\}")
 		{
 			Func := Substr(Switch,7,strlen(Switch)-7)
 			RString := CheckExtension(Func) 
 		}
-		If RegExMatch(Switch,"i)\{clip\}")
+		Else If RegExMatch(Switch,"i)\{clip\}")
 			RString := Clipboard
 		; {save} {{{3
-		If RegExMatch(Switch,"i)\{save:[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{save:[^\{\}]*\}")
 		{
 			; {save:ClipAll}  {{{4
 			; 将原始的选择内容保存到剪切板中
@@ -1379,7 +1409,7 @@ ReplaceSwitch(MenuString)
 					}
 		}
 		; {SendMsg} {{{3
-		If RegExMatch(Switch,"i)\{sendmsg:[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{sendmsg:[^\{\}]*\}")
 		{
 			;SendMessage, Msg [, wParam, lParam, Control, WinTitle, WinText, ExcludeTitle, ExcludeText]
 			MsgString := SubStr(Switch,10,Strlen(Switch)-10)
@@ -1388,11 +1418,11 @@ ReplaceSwitch(MenuString)
 			{
 				If A_Index = 1
 					S_Msg := A_LoopField
-				If A_Index = 2
+				Else If A_Index = 2
 					S_wParam := A_LoopField
-				If A_Index = 3
+				Else If A_Index = 3
 					S_lParam := A_LoopField
-				If A_Index = 4
+				Else If A_Index = 4
 					S_Mode := A_LoopField
 			}
 			If S_Mode = 1
@@ -1409,7 +1439,7 @@ ReplaceSwitch(MenuString)
 				RString := ErrorLevel
 		}
 		; {PostMsg} {{{3
-		If RegExMatch(Switch,"i)\{Postmsg:[^\{\}]*\}")
+		Else If RegExMatch(Switch,"i)\{Postmsg:[^\{\}]*\}")
 		{
 			;PostMessage, Msg [, wParam, lParam, Control, WinTitle, WinText, ExcludeTitle, ExcludeText]
 			MsgString := SubStr(Switch,10,Strlen(Switch)-10)
@@ -1418,11 +1448,11 @@ ReplaceSwitch(MenuString)
 			{
 				If A_Index = 1
 					P_Msg := A_LoopField
-				If A_Index = 2
+				Else If A_Index = 2
 					P_wParam := A_LoopField
-				If A_Index = 3
+				Else If A_Index = 3
 					P_lParam := A_LoopField
-				If A_Index = 4
+				ELse If A_Index = 4
 					P_Mode := A_LoopField
 			}
 			If S_Mode = 1
@@ -1434,20 +1464,6 @@ ReplaceSwitch(MenuString)
 				Msgbox % "PostMessage出错"
 			RString := ""
 		}
-/*
-		; {Send} {{{3
-		If RegExMatch(Switch,"i)\{Send\}")
-		{
-			MatchSend := Switch
-			RString := ""
-		}
-		; {send:key} {{{4
-		If RegExMatch(Switch,"i)\{Send:Key\}")
-		{
-			MatchSendKey := Switch
-			RString := ""
-		}
-*/
 		MenuString := RegExReplace(MenuString,ToMatch(Switch),ToReplace(RString),"",1,Pos)
 		Pos += Strlen(RString)
 	}
@@ -1461,18 +1477,6 @@ ReplaceSwitch(MenuString)
 		Clipboard := MenuString
 		MatchClip := ""
 	}
-/*
-	If Strlen(MatchSend)
-	{
-		SendRaw,%MenuString%
-		MatchSend := ""
-	}
-	If Strlen(MatchSendKey)
-	{
-		Send,%MenuString%
-		MatchSendKey := ""
-	}
-*/
 	Return MenuString
 }
 ; StringByMfile(Switch,MfileArray) {{{2
@@ -1684,12 +1688,13 @@ CheckExtension(func)
 		}
 		If A_IsCompiled
 			Return
-		Msgbox,4,,检测到 %Func% 插件修改，是否重新加载?
-		IfMsgbox Yes
-		{
-			run %A_ScriptDir%\ActMan.ahk
+;		Msgbox,4,,检测到 %Func% 插件修改，是否重新加载?
+;		IfMsgbox Yes
+;		{
+			MenuMode := Strlen(RunMode) ? RunMode : IniReadValue(INI,"Hotkey",A_Thishotkey,"{Mode}")
+			run %A_AhkPath% "%A_ScriptDir%\ActMan.ahk" /r "%MenuMode%"
 			ExitApp
-		}
+;		}
 	}
 	Else
 		Msgbox % Func " 插件不存在，请检查！"
