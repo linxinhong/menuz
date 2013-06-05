@@ -4,6 +4,7 @@
 Setworkingdir,A_ScriptDir 
 Coordmode,Tooltip,Screen
 Global ParamString := Object()
+Global IsReload := False
 ; 读取参数{{{1
 If 0 > 0
 {
@@ -26,6 +27,12 @@ If 0 > 0
 			If RegExMatch(param,"i)/u")
 			{
 				IsUninstall:= True ;卸载某MZA包 用空格分开
+				Continue
+			}
+			If RegExMatch(param,"i)/r")
+			{
+				;遇到这个开关，重启MenuZ.ahk脚本时，会传参数过去，使MenuZ马上进行一次选择
+				IsReload := True 
 				Continue
 			}
 		}
@@ -95,7 +102,14 @@ CheckExtension()
 	SaveTime .= "*/`r`n"
 	FileAppend,%SaveTime%,%ExtensionsAHK%
 	FileRead,Extensions,%ExtensionsAHK%
-	Run MenuZ.ahk
+	If IsReload
+	{
+		RunMode := ParamString[1]
+		Run %A_AhkPath% "%A_ScriptDir%\MenuZ.ahk" "%RunMode%"
+	}
+	Else
+		Run %A_AhkPath% "%A_ScriptDir%\MenuZ.ahk"
+	ExitApp
 }
 ;=============== MZA 管理部分 ===============;
 ; MZA_Add(Param,Mode=0) {{{1
