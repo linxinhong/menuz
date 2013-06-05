@@ -1,4 +1,19 @@
+[ToDoList]
+- 添加{sleep} 开关
+- 移植ViATc的宏机制到MZ中
+- 重做{send:key}机制
+- 添加{ahk}开关
+
 [History]
+2013-6-5
+++ 静默更新扩展，感谢Sunwind的建议
+++ 是否使用编辑器打开所有与当前类型关联的INI，感谢Evil的建议
+++ 添加RunOnce，单次运行模式，用于被其它程序调用
+++ 添加选项OnlyOneToRun，当非默认模式的时候，只有一个菜单时，立即运行
+++ 添加MZGUI.ahk 新的GUI框架
+-- 删除MZConfig.ahk 旧的GUI框架不够智能和方便
+** 修复两个逻辑错误
+
 2013-6-4
 ++ 在配置config段添加到控制出菜单的鼠标偏移选项xp yp
 ++ 编辑INI，可以打开所有当前类型关联的INI，包括用{inifile}引用的ini文件
