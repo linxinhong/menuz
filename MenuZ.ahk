@@ -264,7 +264,7 @@ return
 Config()
 {
 	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
-	If INIReadValue(INI,"Config","EditRealteINI",0)
+	If INIReadValue(INI,"Config","EditRelateINI",0)
 	{
 		Loop,Parse,EditINI,%A_Tab%
 		{
