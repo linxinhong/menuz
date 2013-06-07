@@ -24,7 +24,7 @@ Global SaveID ;保存当前选择的AHK_ID
 Global SaveCtrl ;保存当前选择的Ctrl
 Global ItemString ;保存执行的菜单内容
 Global IconState 
-Global RunOnce := IniReadValue(INI,"Config","RunOnce",0)
+Global RunOnce := False
 Global RunMode := ""
 Global RunMode := ""
 Global ExecMode := ""
@@ -47,29 +47,22 @@ Menu, Tray, icon,%A_Scriptdir%\icons\menuz.ico
 ;Inidelete,%INI%,Hide
 OnMessage(0x4a, "Receive_WM_COPYDATA")  ; 0x4a 为 WM_COPYDATA
 MenuZTextType()
-MenuZLoadINI()
-RunOnce := IniReadValue(INI,"Config","RunOnce",0)
-If RunOnce
-{
-	Menu,Tray,NoIcon
-	RunMode := Strlen(1) ? %1% : "{mode}"
-	MenuZRun()
-}
-Else
-{
-	MenuZHotkey() ; 非运行一次时加载热键
-	if 0 > 0  ;判断传参
-	{
-		RunMode = %1%
-		; 参数必须为{mode}或者{mode:xxxx}
-		if RegExMatch(RunMode,"i)\{mode[^\{\}]*\}")  
-			MenuZRun()
-	}
-}
-
+;MenuZLoadINI()
 ; 用于保存所有系统变量名
 SystemEnv := A_Tab "ALLUSERSPROFILE" A_Tab "APPDATA" A_Tab "CD" A_Tab "CMDCMDLINE" A_Tab "CMDEXTVERSION" A_Tab "COMPUTERNAME" A_Tab "COMSPEC" A_Tab "DATE" A_Tab "ERRORLEVEL" A_Tab "HOMEDRIVE" A_Tab "HOMEPATH" A_Tab "HOMESHARE" A_Tab "LOGONSERVER" A_Tab "NUMBER_OF_PROCESSORS" A_Tab "OS" A_Tab "PATH" A_Tab "PATHEXT" A_Tab "PROCESSOR_ARCHITECTURE" A_Tab "PROCESSOR_IDENTFIER" A_Tab "PROCESSOR_LEVEL" A_Tab "PROCESSOR_REVISION" A_Tab "PROMPT" A_Tab "RANDOM" A_Tab "SYSTEMDRIVE" A_Tab "SYSTEMROOT" A_Tab "TEMP" A_Tab "TIME" A_Tab "USERDOMAIN" A_Tab "USERNAME" A_Tab "USERPROFILE" A_Tab "WINDIR" A_Tab
 AHK_BIEnv := A_Tab "A_WorkingDir" A_Tab "A_ScriptDir" A_Tab "A_ScriptName" A_Tab "A_ScriptFullPath" A_Tab "A_ScriptHwnd" A_Tab "A_LineNumber" A_Tab "A_LineFile" A_Tab "A_ThisFunc" A_Tab "A_ThisLabel" A_Tab "A_AhkVersion" A_Tab "A_AhkPath" A_Tab "A_IsUnicode" A_Tab "A_IsCompiled" A_Tab "A_ExitReason" A_Tab "A_YYYY" A_Tab "A_MM" A_Tab "A_DD" A_Tab "A_MMMM" A_Tab "A_MMM" A_Tab "A_DDDD" A_Tab "A_DDD" A_Tab "A_WDay" A_Tab "A_YDay" A_Tab "A_YWeek" A_Tab "A_Hour" A_Tab "A_Min" A_Tab "A_Sec" A_Tab "A_MSec" A_Tab "A_Now" A_Tab "A_NowUTC" A_Tab "A_TickCount" A_Tab "A_IsSuspended" A_Tab "A_IsPaused" A_Tab "A_IsCritical" A_Tab "A_BatchLines" A_Tab "A_TitleMatchMode" A_Tab "A_TitleMatchModeSpeed" A_Tab "A_DetectHiddenWindows" A_Tab "A_DetectHiddenText" A_Tab "A_AutoTrim" A_Tab "A_StringCaseSense" A_Tab "A_FileEncoding" A_Tab "A_FormatInteger" A_Tab "A_FormatFloat" A_Tab "A_KeyDelay" A_Tab "A_WinDelay" A_Tab "A_ControlDelay" A_Tab "A_MouseDelay" A_Tab "A_DefaultMouseSpeed" A_Tab "A_RegView" A_Tab "A_IconHidden" A_Tab "A_IconTip" A_Tab "A_IconFile" A_Tab "A_IconNumber" A_Tab "A_TimeIdle" A_Tab "A_TimeIdlePhysical" A_Tab "A_Gui" A_Tab "A_GuiControl" A_Tab "A_GuiWidth" A_Tab "A_GuiHeight" A_Tab "A_GuiX" A_Tab "A_GuiY" A_Tab "A_GuiEvent" A_Tab "A_EventInfo" A_Tab "A_ThisHotkey" A_Tab "A_PriorHotkey" A_Tab "A_PriorKey" A_Tab "A_TimeSinceThisHotkey" A_Tab "A_TimeSincePriorHotkey" A_Tab "A_Temp" A_Tab "A_OSType" A_Tab "A_OSVersion" A_Tab "A_Is64bitOS" A_Tab "A_PtrSize" A_Tab "A_Language" A_Tab "A_ComputerName" A_Tab "A_UserName" A_Tab "A_WinDir" A_Tab "A_ProgramFiles" A_Tab "A_AppData" A_Tab "A_AppDataCommon" A_Tab "A_Desktop" A_Tab "A_DesktopCommon" A_Tab "A_StartMenu" A_Tab "A_StartMenuCommon" A_Tab "A_Programs" A_Tab "A_ProgramsCommon" A_Tab "A_Startup" A_Tab "A_StartupCommon" A_Tab "A_MyDocuments" A_Tab "A_IsAdmin" A_Tab "A_ScreenWidth" A_Tab "A_ScreenHeight" A_Tab "A_IPAddress1" A_Tab "A_IPAddress2" A_Tab "A_IPAddress3" A_Tab "A_IPAddress4" A_Tab "A_Cursor" A_Tab "A_CaretX" A_Tab "A_CaretY" A_Tab 
+
+if 0 > 0  ;判断传参
+{
+	RunMode = %1%
+	RunOnce := True
+	Menu,Tray,NoIcon
+	; 参数必须为{mode}或者{mode:xxxx}
+	; if RegExMatch(RunMode,"i)\{mode[^\{\}]*\}")  
+	MenuZRun()
+}
+Else
+	MenuZHotkey() ; 非运行一次时加载热键
 return
 OpenListLines:
 	Listlines
@@ -783,6 +776,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Else
 				Continue
 		}
+/*
 		If RegExMatch(LoopString,"i)\{DynMenu:[^\{\}]*\}",Switch) 
 		{
 			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
@@ -799,6 +793,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Else
 				Continue
 		}
+*/
 		If RegExMatch(LoopString,"^[^=]*\\[^=]*=")
 		{
 			OLkey := Substr(LoopString,1,RegExMatch(LoopString,"\\")-1)
@@ -1101,6 +1096,7 @@ GetOpenWithList(Type,AutoINI)
 ; 替换变量
 ReplaceVar(str,OnlyINI=False)
 {
+	
 	Pos := 1
 	If OnlyINI
 		LoopINI := INI
@@ -1176,6 +1172,8 @@ ReplaceVar(str,OnlyINI=False)
 					EnvGet,Env,%var%
 					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 				}
+				Else
+					Env := UserVar
 			}
 		}
 		Else
