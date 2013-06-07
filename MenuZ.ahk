@@ -17,6 +17,7 @@ Global INI := ScriptDir "\menuz.ini" ; 配置文件
 Global ALLINI ; 每次读取INI时，会对ALLINI的文件列表进行遍历读取，默认只有INI
 Global TempINI := INI ; 临时调用的INI
 Global EditINI := INI ; 临时调用的INI
+Global ReadingINI 
 Global SaveString ;全局变量SaveString，在哪里都可以被读取
 Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
@@ -27,12 +28,14 @@ Global RunOnce := IniReadValue(INI,"Config","RunOnce",0)
 Global RunMode := ""
 Global RunMode := ""
 Global ExecMode := ""
+Global AhkReturn := ""
 Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
+Global INI_Array := Object()
 Global SystemEnv ; 用于保持所有系统变量名
 Global AHK_BIEnv ; 用于保持所有系统变量名
-;Global DebugCount
+Global DebugCount
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
 ;Menu, Tray, NoStandard
 Menu, Tray, Add,显示变量(&S),OpenListLines
@@ -42,6 +45,7 @@ Menu, Tray, Add,重启(&R),ScriptReload
 Menu, Tray, Add,退出(&X),Quit
 Menu, Tray, icon,%A_Scriptdir%\icons\menuz.ico
 ;Inidelete,%INI%,Hide
+OnMessage(0x4a, "Receive_WM_COPYDATA")  ; 0x4a 为 WM_COPYDATA
 MenuZTextType()
 MenuZLoadINI()
 RunOnce := IniReadValue(INI,"Config","RunOnce",0)
@@ -76,6 +80,9 @@ Return
 ScriptReload:
 	Reload
 return
+Suspend:
+	Suspend
+Return
 ; Core {{{1
 ;/======================================================================/
 ; MenuZHotkey() {{{2
@@ -91,14 +98,24 @@ MenuZHotkey()
 	}
 	Loop,Parse,Hotkeys,`n,`r
 	{
-		If RegExMatch(A_LoopField,"=")
+		If Strlen(A_LoopField) = 0 
+			Continue
+		If RegExMatch(A_LoopField,"i)=Suspend")
+		{
 			MZKey := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
+			Hotkey,%MZKey%,Suspend,On,UseErrorLevel
+		}
 		Else
-			MZKey := A_LoopField
-		Value := IniReadValue(INI,"Hotkey",MZKey,"{mode}")
-		If Not RegExMatch(Value,"\{mode[^\{\}]*\}")
-			INIWrite,{mode},%INI%,Hotkey,%MZKey%
-		Hotkey,%MZKey%,<MenuZRun>,On,UseErrorLevel
+		{
+			If RegExMatch(A_LoopField,"=")
+				MZKey := Substr(A_LoopField,1,RegExMatch(A_LoopField,"=")-1)
+			Else
+				MZKey := A_LoopField
+			Value := IniReadValue(INI,"Hotkey",MZKey,"{mode}")
+			If Not RegExMatch(Value,"\{mode[^\{\}]*\}")
+				INIWrite,{mode},%INI%,Hotkey,%MZKey%
+			Hotkey,%MZKey%,<MenuZRun>,On,UseErrorLevel
+		}
 		If ErrorLevel
 			Msgbox % mzKey "热键定义有误"
 	}
@@ -119,7 +136,7 @@ MenuZLoadINI()
 			}
 		}
 	}
-	ALLINI .= ReplaceVar(IniReadValue(INI,"Inifiles"),1)
+	ALLINI .= ReplaceVar(IniReadValue(INI,"LoadINI"),1)
 	If IniReadValue(INI,"Config","OpenWithList")
 		ALLINI .= "`n" A_ScriptDir "\config\auto.ini"
 	Return ALLINI
@@ -129,7 +146,7 @@ MenuZLoadINI()
 ; 读取自定义文本类型
 MenuZTextType()
 {
-	IniRead,TextTypes,%INI%,TextType
+	TextTypes := IniReadValue(INI,"TextType")
 	Loop,Parse,TextTypes,`n,`r
 	{
 		If RegExMatch(A_LoopField,"=")
@@ -151,12 +168,14 @@ MenuzRun()
 	MenuZPos["MenuZ"] := 1
 	If Select()
 	{
+		DebugCount := 0
 		Type := GetType(SaveString)
 		MenuZInit(Type)
 		If IniReadValue(INI,"Config","OpenWithList",0)
 			GetOpenWithList(Type,"config\auto.ini")
 		MenuZLoadINI()
 		CreateMenu(Type,"MenuZ",ReadToMenuZItem(Type,ALLINI))
+		;Tooltip,%A_TimeSinceThisHotkey%
 		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") ) And IniReadValue(INI,"Config","OnlyOneToRun",1)
 		{
 			Item := MenuZItem[1]
@@ -263,6 +282,15 @@ Config()
 	Else
 		Run %Editor% "%INI%"
 		
+}
+; Receive_WM_COPYDATA(wParam, lParam) {{{2
+Receive_WM_COPYDATA(wParam, lParam)
+{
+    StringAddress := NumGet(lParam + 2*A_PtrSize)  ; 获取 CopyDataStruct 的 lpData 成员.
+    AHKReturn := StrGet(StringAddress)  ; 从结构中复制字符串.
+    ; 比起 MsgBox, 应该用 ToolTip 显示, 这样我们可以及时返回:
+    ;ToolTip %A_ScriptName%`nReceived the following string:`n%CopyOfData%
+    return true  ; 返回 1 (true) 是回复此消息的传统方式.
 }
 ; 限制文本长度为Count,不够的话，补充空格
 AdjustString(String,Count)
@@ -376,7 +404,7 @@ Select()
 						Msgbox,4,,检测到MZA包，是否安装？
 						IfMsgbox Yes
 						{
-							Run %A_ScriptDir%\Actman.ahk /a %Select%
+							Run "%A_AhkPath%" "%A_ScriptDir%\Actman.ahk" /a %Select%
 							Return
 						}
 					}
@@ -444,6 +472,7 @@ Interpreter(Item="")
 	{
 		Loop, % MenuZItem[0]
 		{
+			NeedRun := True
 			If RegExMatch(MenuZItem[A_Index],"=")
 				LoopItemString := Substr(MenuZItem[A_Index],RegExMatch(MenuZIte[A_Index],"=")+1)
 			Else
@@ -451,13 +480,15 @@ Interpreter(Item="")
 			LoopItemValue  := ReplaceSwitch(LoopItemString)
 			Ifwinexist,MenuZ Debug
 			{
+				ControlGet,NeedRun,Checked,,Button1,MenuZ Debug
 				ControlGetText,Edit2_str,Edit2,MenuZ Debug
 				Edit2_str .= "`n`n`n" LoopItemString
 				ControlSetText,Edit2,%Edit2_str%,MenuZ Debug
 				ControlGetText,Edit3_str,Edit3,MenuZ Debug
 				Edit3_str .= "`n`n`n" LoopItemValue
 				ControlSetText,Edit3,%Edit3_str%,MenuZ Debug
-				Continue
+				If Not NeedRun
+					Continue
 			}
 			Pos := RegExMatch(LoopItemValue,"i)\{send[^\}\{]*\}",Switch)
 			If Pos
@@ -482,14 +513,16 @@ Interpreter(Item="")
 	Else
 	{
 		ItemValue := ReplaceSwitch(ItemString)
-		Ifwinexist,MenuZ Debug
+		NeedRun := True
+		Ifwinexist,MenuZ Debug 
 		{
+			ControlGet,NeedRun,Checked,,Button1,MenuZ Debug
 			ControlSetText,Edit2,,MenuZ Debug
 			ControlSetText,Edit2,%ItemString%,MenuZ Debug
 			ControlSetText,Edit3,,MenuZ Debug
 			ControlSetText,Edit3,%ItemValue%,MenuZ Debug
 		}
-		ELse
+		If NeedRun
 		{
 			Pos := RegExMatch(ItemValue,"i)\{send[^\}\{]*\}",Switch)
 			If Pos
@@ -639,6 +672,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 		ALLItem := TypeItem
 	Else
 		ALLItem := TypeItem . FuzzyItem . CategoryItem . AnyItem
+	;Msgbox % ALLItem
 	Loop,Parse,ALLItem,`n,`r
 	{
 		LoopString := ReplaceVar(A_LoopField)
@@ -1055,7 +1089,7 @@ ReplaceVar(str,OnlyINI=False)
 	If OnlyINI
 		LoopINI := INI
 	Else
-		LoopINI := MenuZLoadINI()
+		LoopINI := ALLINI
 	Loop
 	{
 		;Tooltip % DebugCount
@@ -1071,8 +1105,8 @@ ReplaceVar(str,OnlyINI=False)
 			{
 				If FileExist(A_LoopField)
 				{
-					INIRead,Env,%A_LoopField%,Env,%Var%
-					IF Env <> ERROR
+					Env := IniReadValue(A_LoopField,"Env",Var)
+					IF Strlen(Env)
 					{
 						IsUserVar := True
 						Break
@@ -1084,6 +1118,11 @@ ReplaceVar(str,OnlyINI=False)
 			Else If RegExMatch(var,"i)^apps$")  ; MZ内置变量
 			{
 				Env := A_ScriptDir "\apps"
+				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
+			}
+			Else If RegExMatch(var,"i)^Script$")  ; MZ内置变量
+			{
+				Env := A_ScriptDir "\Script"
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			}
 			Else If RegExMatch(var,"i)^config$")
@@ -1464,6 +1503,18 @@ ReplaceSwitch(MenuString)
 				Msgbox % "PostMessage出错"
 			RString := ""
 		}
+		; {Ahk} {{{3
+		Else If RegExMatch(Switch,"i)\{ahk:[^\{\}]*\}")
+		{
+			If RegExMatch(Switch,"i)\{ahk:return:[^\{\}]*\}")
+			{
+				RunAHK := A_AhkPath " """ RegExReplace(Switch,"i)(^\{ahk:return:)|\}$") """"
+				Runwait,%RunAHK%
+				RString := AhkReturn
+			}
+			Else
+				RString := A_AhkPath " """ RegExReplace(Switch,"i)(^\{ahk:)|\}$") """"
+		}
 		MenuString := RegExReplace(MenuString,ToMatch(Switch),ToReplace(RString),"",1,Pos)
 		Pos += Strlen(RString)
 	}
@@ -1646,9 +1697,36 @@ SplitpathNameOnly(Path)
 	Else
 		return
 }
-; IniReadValue(Section="",Key="",Default="") {{{2
+; IniReadValue(INIFile,Section="",Key="",Default="") {{{2
 IniReadValue(INIFile,Section="",Key="",Default="")
 {
+/*
+	If Not RegExMatch(ReadingINI,ToMatch(INIFile))
+	{
+		RINI_Shutdown(1)
+		RINI_Read(1,INIFile)
+		ReadingINI := INIFile
+	}
+		;msgbox % INIFile "`n" Section "`n" Key "`n" Default
+	If Not Strlen(Section) 
+		Return RINI_GetSections(1,"`n")
+	If Strlen(Section) And (Not Strlen(Key))
+	{
+		;Msgbox % RINI_GetSectionKeys(1,Section,"`n")
+		Keys := RINI_GetSectionKeys(1,Section,"`n")
+		Loop,Parse,Keys,`n
+		{
+			If A_LoopField = -2
+				Continue
+			ReturnKeys .= A_LoopField "=" RINI_GetKeyValue(1,Section,A_LoopField) "`n"
+		}
+		Return ReturnKeys
+	}
+	If Strlen(Section) And Strlen(Key)
+		Return RINI_GetKeyValue(1,Section,Key,Default)
+*/
+	;DebugCount++
+	;Tooltip % DebugCount
 	IniRead,Value,%INIFile%,%Section%,%Key%
 	If Value = ERROR
 	{
@@ -1675,7 +1753,7 @@ CheckExtension(func)
 			If RegExMatch(A_LoopField,Match)
 			{
 				FileGetTime,CheckTime,%FuncAHK%,M
-				IniRead,ExtensionsTime,%ExtensionsAHK%,ExtensionsTime,%Func%
+				ExtensionsTime := IniReadValue(ExtensionsAHK,"ExtensionsTime",Func)
 				If ExtensionsTime = %CheckTime% 
 				{
 					If IsFunc(Func)
@@ -1791,7 +1869,8 @@ Debuggui:
 	Gui,Debug:Add,Text,h12 w500,测试语句
 	Gui,Debug:Add,Edit,h80 w500 gDebugSwitch
 	Gui,Debug:Add,Text,h12 w500,测试结果
-	Gui,Debug:Add,Edit,h200 w500
+	Gui,Debug:Add,CheckBox, x350 y240,显示测试结果并运行
+	Gui,Debug:Add,Edit,x12 h200 w500
 	Gui,Debug:show,,MenuZ Debug
 return
 DebugSwitch:
