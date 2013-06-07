@@ -5,6 +5,11 @@
 - 重做{send:key}机制
 
 [History]
+2013-6-7
+-- 删除{dynMenu}开关
+-- 删除RunOnce选项
+** 修复单次运行的错误
+
 2013-6-6
 ++ 添加{dynMenu}开关，可以独立脚本添加动态菜单
    例：{dynMenu:%Script%\dm.ahk}
