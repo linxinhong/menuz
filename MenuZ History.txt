@@ -1,10 +1,24 @@
 [ToDoList]
 - 添加{sleep} 开关
+- 添加{runwait} 开关
 - 移植ViATc的宏机制到MZ中
 - 重做{send:key}机制
-- 添加{ahk}开关
 
 [History]
+2013-6-6
+++ 添加{ahk}开关,简单写AHK时的写法，满足以后便携版MZ的功能
+   例:{ahk:apps\test.ahk},会被替换为x:\xxx\autohotkey.exe "apps\test.ahk"
+++ 添加{ahk:return}开关
+   例:{ahk:return:%Script%\ReturnSample.ahk}
+   在选择带有此开关的菜单时，会运行ReturnSample.ahk脚本并获取返回值
+   以上两个开关，在MenuZ.ini的[Any]中与Script目录下有相应的示例
+++ 添加一个CheckBox用于控制，调试的同时运行菜单内容
+   注:调试模式默认是不运行菜单的
+++ 热键可以指定suspend，如capslock=suspend，可以用capslock来控制热键启用/禁用
+** 优化出菜单性能(虽然不怎么明显，但是真的有）
+-- 为了将[inifiles]段与{inifile}开关区别开来，将[inifiles]段改名为[loadini]
+   [LoadINI] 是用于将其它INI载入到MenuZ.ini中，相当于做一个延伸，便于INI管理
+
 2013-6-5
 ++ 静默更新扩展，感谢Sunwind的建议
 ++ 是否使用编辑器打开所有与当前类型关联的INI，感谢Evil的建议
