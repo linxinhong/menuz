@@ -6,6 +6,11 @@
 
 [History]
 2013-6-6
+++ 添加{dynMenu}开关，可以独立脚本添加动态菜单
+   例：{dynMenu:%Script%\dm.ahk}
+   dm.ahk 必须要返回以下格式的内容
+   test=cmd
+   aaaa=explorer
 ++ 添加{ahk}开关,简单写AHK时的写法，满足以后便携版MZ的功能
    例:{ahk:apps\test.ahk},会被替换为x:\xxx\autohotkey.exe "apps\test.ahk"
 ++ 添加{ahk:return}开关

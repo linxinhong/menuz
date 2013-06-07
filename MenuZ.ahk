@@ -783,6 +783,22 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Else
 				Continue
 		}
+		If RegExMatch(LoopString,"i)\{DynMenu:[^\{\}]*\}",Switch) 
+		{
+			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
+			RunAHK := A_AhkPath " """ SubMenuName """"
+			Runwait,%RunAHK%
+			DynItems := AhkReturn
+			If Strlen(DynItems)
+			{
+				If CreateMenu(Type,SubMenuName,DynItems)
+					IsSubMenuName := True
+				Else
+					Continue
+			}
+			Else
+				Continue
+		}
 		If RegExMatch(LoopString,"^[^=]*\\[^=]*=")
 		{
 			OLkey := Substr(LoopString,1,RegExMatch(LoopString,"\\")-1)
