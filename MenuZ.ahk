@@ -163,8 +163,14 @@ MenuzRun()
 	{
 		DebugCount := 0
 		Tooltip
-		Type := GetType(SaveString)
+		SelectArray := ReturnTypeString(SaveString)
+		Type := SelectArray.Type
 		MenuZInit(Type)
+		If RegExMatch(SelectArray,String,"i)^mza$")
+		{
+			Menu,MenuZ,Add,安装MZA包,<InstallMZA>			
+			Menu,MenuZ,Icon,安装MZA包,%A_ScriptDir%\Icons\menuz.ico
+		}
 		If IniReadValue(INI,"Config","OpenWithList",0)
 			GetOpenWithList(Type,"config\auto.ini")
 		MenuZLoadINI()
@@ -408,7 +414,7 @@ Select()
 				Else
 				{
 					Splitpath,Select,Select_Name,,Select_Extension
-					If RegExMatch(Select_Extension,"i)^mza$")
+/*
 					{
 						Msgbox,4,,检测到MZA包，是否安装？
 						IfMsgbox Yes
@@ -417,6 +423,7 @@ Select()
 							Return
 						}
 					}
+*/
 					If Select_Extension
 						SaveString .= "." . Select_Extension . "|" . Select
 					Else
@@ -434,6 +441,15 @@ Select()
 		ControlSetText,Edit3,,MenuZ Debug
 	}
 	Return SaveString
+}
+<InstallMZA>:
+	InstallMZA()
+return
+InstallMZA()
+{
+	SelectArray := ReturnTypeString(SaveString)
+	Select := SelectArray.String
+	Run "%A_AhkPath%" "%A_ScriptDir%\Actman.ahk" /a "%Select%"
 }
 ;/=======================================================================/
 ; Interpreter() {{{2
@@ -779,9 +795,6 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
-			MatchINIFile := "\t" ToMatch(INIFile) "\t"
-			If Not RegExMatch(EditINI,MatchINIFile)
-				EditINI .= A_Tab INIFile A_Tab
 			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 				TempINI := SaveALLINI
 			Continue
@@ -794,6 +807,9 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
+			MatchINIFile := "\t" ToMatch(INIFile) "\t"
+			If Not RegExMatch(EditINI,MatchINIFile)
+				EditINI .= A_Tab INIFile A_Tab
 			;Msgbox % SubMenuName  "`n" ReadToMenuZItem(INIType,INIFile,True)
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 			{
