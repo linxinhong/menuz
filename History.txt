@@ -10,7 +10,16 @@
    弹出菜单 MZCommand.ahk {mode}
    会通过SendMessage的方式传{mode}给MenuZ.ahk，并调出菜单
 -- 删除LoadINI机制，LoadINI不利用于INI良性发展
-** 菜单秒出
+** 为了补充删除LoadINI机制后缺少的灵活性，修改{inifile}为可带多个菜单
+   如 config\command.ini
+   [command]
+   test1={SubMenu:MenuGroup1}
+   test2={SubMenu:MenuGroup2}
+   [MenuGroup1]
+   xxx=
+   [MenuGroup2]
+   yyy=
+** 菜单秒出!!!
 ** 修复传参运行MenuZ时(MenuZ.ahk {mode}) 时热键无效的问题
 
 2013-6-7
