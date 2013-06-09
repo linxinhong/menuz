@@ -779,6 +779,9 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
+			MatchINIFile := "\t" ToMatch(INIFile) "\t"
+			If Not RegExMatch(EditINI,MatchINIFile)
+				EditINI .= A_Tab INIFile A_Tab
 			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 				TempINI := SaveALLINI
 			Continue
@@ -791,9 +794,6 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
-			MatchINIFile := "\t" ToMatch(INIFile) "\t"
-			If Not RegExMatch(EditINI,MatchINIFile)
-				EditINI .= A_Tab INIFile A_Tab
 			;Msgbox % SubMenuName  "`n" ReadToMenuZItem(INIType,INIFile,True)
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 			{
