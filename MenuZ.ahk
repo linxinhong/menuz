@@ -9,6 +9,8 @@
 #SingleInstance,Force
 Setworkingdir,%A_ScriptDir%
 SetKeyDelay,-1
+Setbatchlines,-1
+;Msgbox % A_BatchLines
 Scriptdir := A_ScriptDir
 Coordmode,Menu,Screen
 Coordmode,Mouse,Screen
@@ -32,7 +34,7 @@ Global AhkReturn := ""
 Global MenuZPos := Object()
 Global MenuZItem := Object()
 Global MenuZTextType := Object()
-Global INI_Array := Object()
+Global MenuZSubMenu := Object()
 Global SystemEnv ; 用于保持所有系统变量名
 Global AHK_BIEnv ; 用于保持所有系统变量名
 Global DebugCount
@@ -56,13 +58,12 @@ if 0 > 0  ;判断传参
 {
 	RunMode = %1%
 	RunOnce := True
-	Menu,Tray,NoIcon
+;	Menu,Tray,NoIcon
 	; 参数必须为{mode}或者{mode:xxxx}
 	; if RegExMatch(RunMode,"i)\{mode[^\{\}]*\}")  
 	MenuZRun()
 }
-Else
-	MenuZHotkey() ; 非运行一次时加载热键
+MenuZHotkey() ; 非运行一次时加载热键
 return
 OpenListLines:
 	Listlines
@@ -129,7 +130,6 @@ MenuZLoadINI()
 			}
 		}
 	}
-	ALLINI .= ReplaceVar(IniReadValue(INI,"LoadINI"),1)
 	If IniReadValue(INI,"Config","OpenWithList")
 		ALLINI .= "`n" A_ScriptDir "\config\auto.ini"
 	Return ALLINI
@@ -162,13 +162,13 @@ MenuzRun()
 	If Select()
 	{
 		DebugCount := 0
+		Tooltip
 		Type := GetType(SaveString)
 		MenuZInit(Type)
 		If IniReadValue(INI,"Config","OpenWithList",0)
 			GetOpenWithList(Type,"config\auto.ini")
 		MenuZLoadINI()
 		CreateMenu(Type,"MenuZ",ReadToMenuZItem(Type,ALLINI))
-		;Tooltip,%A_TimeSinceThisHotkey%
 		If  MenuZItem[0] = 1  And ( Not RegExMatch(MenuZItem["MenuMode"],"i)\{mode\}") ) And IniReadValue(INI,"Config","OnlyOneToRun",1)
 		{
 			Item := MenuZItem[1]
@@ -281,10 +281,26 @@ Receive_WM_COPYDATA(wParam, lParam)
 {
     StringAddress := NumGet(lParam + 2*A_PtrSize)  ; 获取 CopyDataStruct 的 lpData 成员.
     AHKReturn := StrGet(StringAddress)  ; 从结构中复制字符串.
+	; MZCommand:
+	If InStr(Substr(AhkReturn,1,11),"MZCommand:")
+	{
+		MZC := SubStr(AhkReturn,11)
+		If InStr(SubStr(MZC,1,1),"{") And Instr(SubStr(MZC,Strlen(MZC)-1),"}")
+		{
+			RunMode := MZC
+			AhkReturn := ""
+			Tooltip,% Runmode
+			Settimer,MZC_RunMode,-10
+			Return True
+		}
+	}
     ; 比起 MsgBox, 应该用 ToolTip 显示, 这样我们可以及时返回:
     ;ToolTip %A_ScriptName%`nReceived the following string:`n%CopyOfData%
     return true  ; 返回 1 (true) 是回复此消息的传统方式.
 }
+MZC_RunMode:
+	MenuZRun()
+return
 ; 限制文本长度为Count,不够的话，补充空格
 AdjustString(String,Count)
 {
@@ -550,7 +566,7 @@ ToRun(str,Mode="")
 	{
     	Run %str%,,Max UseErrorLevel,runpid
 		If ErrorLevel
-			Traytip,错误,"运行"%str%"有误，请检查",10,3
+			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
 		If m = 1
 			Return
@@ -561,7 +577,7 @@ ToRun(str,Mode="")
 	{
     	Run %str%,,min UseErrorLevel,runpid
 		If ErrorLevel
-			Traytip,错误,"运行"%str%"有误，请检查",10,3
+			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
 		If m = -1
 			Return
@@ -572,7 +588,7 @@ ToRun(str,Mode="")
 	{
     	Run %str%,,hide UseErrorLevel,runpid
 		If ErrorLevel
-			Traytip,错误,"运行"%str%"有误，请检查",10,3
+			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGetPos,x,y,,,AHK_PID %runpid%
 		If (x = "") and (y = "")
 			return
@@ -584,7 +600,7 @@ ToRun(str,Mode="")
 	{
     	Run %str%,,UseErrorLevel,runpid
 		If ErrorLevel
-			Traytip,错误,"运行"%str%"有误，请检查",10,3
+			Traytip,错误,%str%`n运行有误，请检查,10,3
 	}
 	If IniReadValue(INI,"Config","TrayTip",1)
 		Traytip,运行结果,%Str%,10,1
@@ -758,6 +774,17 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		If RegExMatch(LoopString,"i)\{inifile:[^\{\}]*\}",Switch)
 		{
 			INIFile := Substr(Switch,10,strlen(Switch)-10)
+			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
+				INIFile := A_ScriptDir "\" INIFile
+			Splitpath,INIFile,,,,INIType
+			SaveALLINI := TempINI
+			TempINI := INIFile
+			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+				TempINI := SaveALLINI
+			Continue
+			
+/*
+			INIFile := Substr(Switch,10,strlen(Switch)-10)
 			SubMenuName := SubStr(LoopString,1,RegExMatch(LoopString,"=")-1)
 			If Not RegExMatch(INIFile,"(^.:\\.*)|(^\\\\.*)")
 				INIFile := A_ScriptDir "\" INIFile
@@ -775,6 +802,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			}
 			Else
 				Continue
+*/
 		}
 /*
 		If RegExMatch(LoopString,"i)\{DynMenu:[^\{\}]*\}",Switch) 
@@ -1098,10 +1126,6 @@ ReplaceVar(str,OnlyINI=False)
 {
 	
 	Pos := 1
-	If OnlyINI
-		LoopINI := INI
-	Else
-		LoopINI := ALLINI
 	Loop
 	{
 		;Tooltip % DebugCount
@@ -1112,20 +1136,8 @@ ReplaceVar(str,OnlyINI=False)
 			var := SubStr(UserVar,2,Strlen(UserVar)-2)
 			If Strlen(var) = 0
 				Break
-			IsUserVar := False
-			Loop,Parse,LoopINI,`n,`r
-			{
-				If FileExist(A_LoopField)
-				{
-					Env := IniReadValue(A_LoopField,"Env",Var)
-					IF Strlen(Env)
-					{
-						IsUserVar := True
-						Break
-					}
-				}
-			}
-			If IsUserVar ; 用户变量最大
+			Env := IniReadValue(INI,"Env",Var)
+			IF Not ErrorLevel
 				str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 			Else If RegExMatch(var,"i)^apps$")  ; MZ内置变量
 			{
@@ -1159,15 +1171,13 @@ ReplaceVar(str,OnlyINI=False)
 			}
 			Else
 			{
-				; AHK内置变量
-				; 系统变量
 				MatchVar := "i)\t" ToMatch(Var) "\t"
-				If RegExMatch(AHK_BIEnv,MatchVar)
+				If RegExMatch(AHK_BIEnv,MatchVar) ; AHK内置变量
 				{
 					Env := %Var%
 					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
 				}
-				Else If RegExMatch(SystemEnv,MatchVar)
+				Else If RegExMatch(SystemEnv,MatchVar) ; 系统变量
 				{
 					EnvGet,Env,%var%
 					Str := RegExReplace(Str,ToMatch(UserVar),ToReplace(Env))
@@ -1714,36 +1724,13 @@ SplitpathNameOnly(Path)
 ; IniReadValue(INIFile,Section="",Key="",Default="") {{{2
 IniReadValue(INIFile,Section="",Key="",Default="")
 {
-/*
-	If Not RegExMatch(ReadingINI,ToMatch(INIFile))
-	{
-		RINI_Shutdown(1)
-		RINI_Read(1,INIFile)
-		ReadingINI := INIFile
-	}
-		;msgbox % INIFile "`n" Section "`n" Key "`n" Default
-	If Not Strlen(Section) 
-		Return RINI_GetSections(1,"`n")
-	If Strlen(Section) And (Not Strlen(Key))
-	{
-		;Msgbox % RINI_GetSectionKeys(1,Section,"`n")
-		Keys := RINI_GetSectionKeys(1,Section,"`n")
-		Loop,Parse,Keys,`n
-		{
-			If A_LoopField = -2
-				Continue
-			ReturnKeys .= A_LoopField "=" RINI_GetKeyValue(1,Section,A_LoopField) "`n"
-		}
-		Return ReturnKeys
-	}
-	If Strlen(Section) And Strlen(Key)
-		Return RINI_GetKeyValue(1,Section,Key,Default)
-*/
 	;DebugCount++
 	;Tooltip % DebugCount
+	ErrorLevel := False
 	IniRead,Value,%INIFile%,%Section%,%Key%
 	If Value = ERROR
 	{
+		ErrorLevel := True
 		If Strlen(Default)
 			Iniwrite,%Default%,%INIFile%,%Section%,%Key%
 		Return Default
