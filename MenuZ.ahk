@@ -7,6 +7,7 @@
 ; Init {{{1
 #NoEnv
 #SingleInstance,Force
+
 Setworkingdir,%A_ScriptDir%
 SetKeyDelay,-1
 Setbatchlines,-1
@@ -39,8 +40,63 @@ Global SystemEnv ; 用于保持所有系统变量名
 Global AHK_BIEnv ; 用于保持所有系统变量名
 Global DebugCount
 Menu, Tray, UseErrorLevel ;来阻止显示对话框和终止线程,并启用ErrorLevel
-;Menu, Tray, NoStandard
-Menu, Tray, Add,显示变量(&S),OpenListLines
+Menu, Tray, NoStandard
+/*
+增加脚本管理 By SunWind
+
+2013-6-11 01:51 By Starred
+** 为与MZ原先的Script目录区别开,管理脚本请存放于MyScript\ 目录中
+
+*/
+/* 启用脚本管理功能，请去掉本行注释
+DetectHiddenWindows On  ; 允许探测脚本中隐藏的主窗口。
+SetTitleMatchMode 2  ; 避免需要指定如下所示的文件的完整路径。
+scriptCount = 0
+Menu MyScript_unopen, Add
+Menu MyScript_unclose, Add
+
+; 遍历MyScript目录下的ahk文件
+Loop, %A_WorkingDir%\MyScript\*.ahk
+{
+    StringRePlace menuName, A_LoopFileName, .ahk
+
+    scriptCount += 1
+    MyScript%scriptCount%0 := A_LoopFileName
+
+    IfWinExist %A_LoopFileName% - AutoHotkey    ; 已经打开
+    {
+        Menu MyScript_unclose, add, %menuName%, tsk_close
+        MyScript%scriptCount%1 = 1
+    }
+    else
+    {
+        Menu MyScript_unopen, add, %menuName%, tsk_open
+        MyScript%scriptCount%1 = 0
+    }
+}
+
+
+; 增加管理按钮
+Menu Tray, Add, 启动所有脚本, tsk_openAll
+Menu Tray, Add, 启动脚本, :MyScript_unopen
+Menu Tray, Add, 关闭脚本, :MyScript_unclose
+Menu Tray, Add, 关闭所有脚本, tsk_closeAll
+Menu Tray, Add
+启用脚本管理功能，请去掉本行注释 */ 
+/*
+增加脚本管理结束
+*/
+;sunwind 2013年6月2日0:36:32 增加编辑配置的traymenu项
+;使用方法：点击托盘图标，选择编辑配置
+;说明：方便直接编辑配置
+Menu, Tray, Add,编辑代码(&E),ScriptEdit ; 打开当前脚本进行编辑. 
+Menu, Tray, Add,修改配置(&C),ConfigEdit ; 打开当前配置进行编辑. 
+Menu, Tray, Add,
+;sunwind 2013年6月2日0:40:37 修正 OpenListLines 为执行状态
+;增加 显示变量 为 OpenListVars
+Menu, Tray, Add,执行状态(&O),OpenListLines
+Menu, Tray, Add,显示变量(&V),OpenListVars
+Menu, Tray, Add,
 Menu, Tray, Add,调试窗口(&D),debuggui
 Menu, Tray, Add,隐藏运行列表(&H),debuggui
 Menu, Tray, Add,重启(&R),ScriptReload
@@ -65,8 +121,21 @@ if 0 > 0  ;判断传参
 }
 MenuZHotkey() ; 非运行一次时加载热键
 return
+
+ScriptEdit:
+	Edit
+return
+
+ConfigEdit:
+	gosub <config>
+return
+
 OpenListLines:
 	Listlines
+return
+;~ sunwind 2013年6月2日0:41:51 显示脚本的 变量: 它们的名称和当前的内容.
+OpenListVars:
+	ListVars 
 return
 Quit:
 	ExitApp
@@ -166,10 +235,11 @@ MenuzRun()
 		SelectArray := ReturnTypeString(SaveString)
 		Type := SelectArray.Type
 		MenuZInit(Type)
-		If RegExMatch(SelectArray,String,"i)^mza$")
+		If RegExMatch(SelectArray.String,"i)\.mza$")
 		{
 			Menu,MenuZ,Add,安装MZA包,<InstallMZA>			
 			Menu,MenuZ,Icon,安装MZA包,%A_ScriptDir%\Icons\menuz.ico
+			Menu,MenuZ,Add
 		}
 		If IniReadValue(INI,"Config","OpenWithList",0)
 			GetOpenWithList(Type,"config\auto.ini")
@@ -291,21 +361,33 @@ Receive_WM_COPYDATA(wParam, lParam)
 	If InStr(Substr(AhkReturn,1,11),"MZCommand:")
 	{
 		MZC := SubStr(AhkReturn,11)
-		If InStr(SubStr(MZC,1,1),"{") And Instr(SubStr(MZC,Strlen(MZC)-1),"}")
+		If RegExMatch(MZC,"^\{[^\{\}]*\}")
 		{
 			RunMode := MZC
 			AhkReturn := ""
-			Tooltip,% Runmode
 			Settimer,MZC_RunMode,-10
 			Return True
 		}
+		If RegExMatch(MZC,"i)^DebugGUI:")
+		{
+			AhkReturn := Substr(MZC,10)
+			Settimer,MZC_DebugGUI,-10
+			Return True
+		}
 	}
-    ; 比起 MsgBox, 应该用 ToolTip 显示, 这样我们可以及时返回:
-    ;ToolTip %A_ScriptName%`nReceived the following string:`n%CopyOfData%
     return true  ; 返回 1 (true) 是回复此消息的传统方式.
 }
+; MZCommand {{{2
+; MZC_RunMode() {{{3
 MZC_RunMode:
 	MenuZRun()
+return
+; MZC_DebugGUI() {{{3
+MZC_DebugGUI:
+	GoSub,DebugGUI
+	WinWaitActive,MenuZ Debug,,1
+	ControlSetText,Edit2,%AHKReturn%,MenuZ Debug
+	AHKReturn := ""
 return
 ; 限制文本长度为Count,不够的话，补充空格
 AdjustString(String,Count)
@@ -414,16 +496,6 @@ Select()
 				Else
 				{
 					Splitpath,Select,Select_Name,,Select_Extension
-/*
-					{
-						Msgbox,4,,检测到MZA包，是否安装？
-						IfMsgbox Yes
-						{
-							Run "%A_AhkPath%" "%A_ScriptDir%\Actman.ahk" /a %Select%
-							Return
-						}
-					}
-*/
 					If Select_Extension
 						SaveString .= "." . Select_Extension . "|" . Select
 					Else
@@ -437,8 +509,7 @@ Select()
 	Ifwinexist,MenuZ Debug
 	{
 		ControlSetText,Edit1,%SaveString%,MenuZ Debug
-		ControlSetText,Edit2,,MenuZ Debug
-		ControlSetText,Edit3,,MenuZ Debug
+		DebugSwitch()
 	}
 	Return SaveString
 }
@@ -1902,5 +1973,74 @@ DebugSwitch()
 }
 ; ConfigGUI {{{2
 
+tsk_openAll:
+Loop, %scriptCount%
+{
+    thisScript := MyScript%A_index%0
+    If  MyScript%A_index%1 = 0    ;没打开
+    {
+        IfWinNotExist %thisScript% - AutoHotkey    ; 没有打开
+            Run "%A_AhkPath%"  MyScript/%thisScript%
 
+
+        MyScript%A_index%1 = 1
+
+        StringRePlace menuName, thisScript, .ahk
+        Menu MyScript_unclose, add, %menuName%, tsk_close
+        Menu MyScript_unopen, delete, %menuName%
+    }
+}
+Return
+
+tsk_open:
+Loop, %scriptCount%
+{
+    thisScript := MyScript%A_index%0
+    If thisScript = %A_thismenuitem%.ahk  ; match found.
+    {
+        IfWinNotExist %thisScript% - AutoHotkey    ; 没有打开
+            Run "%A_AhkPath%"  MyScript/%thisScript%
+
+        MyScript%A_index%1 := 1
+
+        Menu MyScript_unclose, add, %A_thismenuitem%, tsk_close
+        Menu MyScript_unopen, delete, %A_thismenuitem%
+
+        Break
+    }
+}
+Return
+
+tsk_close:
+Loop, %scriptCount%
+{
+    thisScript := MyScript%A_index%0
+    If thisScript = %A_thismenuitem%.ahk  ; match found.
+    {
+        WinClose %thisScript% - AutoHotkey
+        MyScript%A_index%1 := 0
+
+        Menu MyScript_unopen, add, %A_thismenuitem%, tsk_open
+        Menu MyScript_unclose, delete, %A_thismenuitem%
+
+        Break
+    }
+}
+Return
+
+tsk_closeAll:
+Loop, %scriptCount%
+{
+    thisScript := MyScript%A_index%0
+    If MyScript%A_index%1 = 1  ; 已打开
+    {
+        WinClose %thisScript% - AutoHotkey
+        MyScript%A_index%1 = 0
+
+        StringRePlace menuName, thisScript, .ahk
+        Menu MyScript_unopen, add, %menuName%, tsk_open
+        Menu MyScript_unclose, delete, %menuName%
+    }
+}
+Return
 #Include %A_ScriptDir%\Extensions\Extensions.ahk
