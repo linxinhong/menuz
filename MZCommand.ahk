@@ -2,10 +2,51 @@
 #NoTrayIcon
 DetectHiddenWindows On
 SetTitleMatchMode 2
+Global ParamString := Object()
 If 0 > 0
 {
-	Mode = %1%
-	SendMZC := "MZCommand:" Mode
+	Idx := 0
+	Loop,%0%
+	{
+		Param := %A_Index%	
+		If A_Index = 1
+		{
+			MZC_Mode(Param)
+			If RegExMatch(param,"i)/m")
+			{
+				IsMode := True   ;Mode
+				Continue
+			}
+			If RegExMatch(param,"i)/d")
+			{
+				IsDebugGUI := True   ;Debug
+				Continue
+			}
+		}
+		idx++
+		ParamString[idx] := param
+	}
+	ParamString[0] := idx
+	If IsMode
+		MZC_Mode(ParamString[1])
+	If IsDebugGUI
+		MZC_DebugGUI()
+}
+MZC_Mode(Mode)
+{
+	If RegExMatch(Mode,"^\{[^\{\}]*\}$")
+	{
+		SendMZC := "MZCommand:" Mode
+		Send_WM_COPYDATA(SendMZC)
+		exit
+	}
+}
+MZC_DebugGUI()
+{
+	Count := ParamString[0]
+	Loop,%Count%
+		DebugString .= ParamString[A_Index]
+	SendMZC := "MZCommand:DebugGUI:" DebugString
 	Send_WM_COPYDATA(SendMZC)
 	exit
 }
