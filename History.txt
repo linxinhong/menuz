@@ -5,6 +5,20 @@
 - 重做{send:key}机制
 
 [History]
+2013-6-10
+++ 添加一个MZCommand选项 /d ; DebugGUI 打开调试窗口并设置测试语句的内容
+   例:  MZCommand.ahk /d {file:path} 
+   将会打开调试窗口并设置测试语句为{file:path}
+++ 添加一个MZCommand选项 /m ; Mode 发送Mode给MenuZ.ahk主脚本
+   例:  MZCommand.ahk /m {mode} 发送{mode}给MenuZ，并显示菜单.
+   注：如果无任意选项，MZCommand.ahk 默认为发送Mode.
+   MZCommand.ahk {mode} = MZCommand.ahk /m {mode}
+++ 添加脚本管理功能(By Sunwind)，默认不启用，如有需要请
+   在MenuZ.ahk去掉 51 行的注释
+   将目录存放在MyScript\目录中
+** 当选择MZA文件时，不再显示恼人的Msgbox，而是添加"安装MZA包"到菜单内容中
+** 修改MZGUI布局
+
 2013-6-9
 ++ MZCommand机制，利用脚本间传参的机制，调用MenuZ的功能，如：
    弹出菜单 MZCommand.ahk {mode}
