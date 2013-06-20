@@ -113,7 +113,7 @@ AHK_BIEnv := A_Tab "A_WorkingDir" A_Tab "A_ScriptDir" A_Tab "A_ScriptName" A_Tab
 if 0 > 0  ;判断传参
 {
 	RunMode = %1%
-	RunOnce := True
+	;RunOnce := True
 ;	Menu,Tray,NoIcon
 	; 参数必须为{mode}或者{mode:xxxx}
 	; if RegExMatch(RunMode,"i)\{mode[^\{\}]*\}")  
@@ -1032,12 +1032,15 @@ SetTypeIcon(MenuName,ItemKey,ItemValue,Ext=False)
 			tm = `"
 			;IconPath := LTrim(ReplaceVar(IconPath),tm)
 			IconPath := LTrim(IconPath,tm)
-			Loop,% Strlen(IconPath)
-			{
-				Loop_exec := SubStr(IconPath,1,strlen(IconPath)-A_Index)
-				If FileExist(Loop_exec)
-					Break
-			}
+			If FileExist(IconPath)
+				Loop_exec := IconPath
+			Else
+				Loop,% Strlen(IconPath)
+				{
+					Loop_exec := SubStr(IconPath,1,strlen(IconPath)-A_Index)
+					If FileExist(Loop_exec)
+						Break
+				}
 			IconPath := Loop_exec
 			IconIndex := 2
 			Return ReturnIcon(MenuName,ItemKey,IconPath,IconIndex)
@@ -1186,12 +1189,15 @@ GetOpenWithList(Type,AutoINI)
 		If A_LoopField
 		{
 			Loop_str := RegExReplace(ReplaceVar(A_LoopField),"""")
-			Loop,% Strlen(Loop_str)
-			{
-				Loop_exec := SubStr(Loop_str,1,strlen(Loop_str)-A_Index)
-				If FileExist(Loop_exec)
-					Break
-			}
+			If FileExist(Loop_Str)
+				Loop_exec := Loop_Str
+			Else
+				Loop,% Strlen(Loop_str)
+				{
+					Loop_exec := SubStr(Loop_str,1,strlen(Loop_str)-A_Index)
+					If FileExist(Loop_exec)
+						Break
+				}
 			If FileExist(Loop_exec)
 				k := FileGetVersionInfo_AW(Loop_exec,"FileDescription")
 			Else
