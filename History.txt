@@ -5,6 +5,9 @@
 - 重做{send:key}机制
 
 [History]
+2013-6-20
+** 修复重新加载Extension后会退出脚本的问题
+
 2013-6-10
 ++ 添加一个MZCommand选项 /d ; DebugGUI 打开调试窗口并设置测试语句的内容
    例:  MZCommand.ahk /d {file:path} 
