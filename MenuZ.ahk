@@ -27,6 +27,7 @@ Global SaveID ;保存当前选择的AHK_ID
 Global SaveCtrl ;保存当前选择的Ctrl
 Global ItemString ;保存执行的菜单内容
 Global IconState 
+Global WorkingDir
 Global RunOnce := False
 Global RunMode := ""
 Global RunMode := ""
@@ -530,17 +531,20 @@ InstallMZA()
 return
 Interpreter(Item="")
 {
-	If A_ThisMenuItemPos = 1  And RegExMatch(A_ThisMenu,"MenuZ")
-		Item := MenuZItem["Default"]
 	; 如果无相应的Item传入，则Loop获取当前Item的菜单内容
 	If Strlen(Item) = 0 
 	{
-		Match := "^\[" ToMatch(A_ThisMenu) "\]" ToMatch(A_ThisMenuItem) "=.*"
-		DelMatch := "\[" ToMatch(A_ThisMenu) "\]"
-		For,index,key in MenuZItem
+		If ( A_ThisMenuItemPos = 1 ) And RegExMatch(A_ThisMenu,"^MenuZ$")
+			Item := MenuZItem["Default"]
+		Else
 		{
-			If RegExMatch(Key,Match)
-				Item := RegExReplace(Key,DelMatch)
+			Match := "^\[" ToMatch(A_ThisMenu) "\]" ToMatch(A_ThisMenuItem) "=.*"
+			DelMatch := "\[" ToMatch(A_ThisMenu) "\]"
+			For,index,key in MenuZItem
+			{
+				If RegExMatch(Key,Match)
+					Item := RegExReplace(Key,DelMatch)
+			}
 		}
 	}
 	If RegExMatch(Item,"=")
@@ -651,7 +655,7 @@ ToRun(str,Mode="")
 		return
 	If RegExMatch(Mode,"i)^max$")
 	{
-    	Run %str%,,Max UseErrorLevel,runpid
+    	Run %str%,%WorkingDir%,Max UseErrorLevel,runpid
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
@@ -662,7 +666,7 @@ ToRun(str,Mode="")
 	}
 	If RegExMatch(Mode,"i)^min$")
 	{
-    	Run %str%,,min UseErrorLevel,runpid
+    	Run %str%,%WorkingDir%,min UseErrorLevel,runpid
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
@@ -673,7 +677,7 @@ ToRun(str,Mode="")
 	}
 	If RegExMatch(Mode,"i)^hide$")
 	{
-    	Run %str%,,hide UseErrorLevel,runpid
+    	Run %str%,%WorkingDir%,hide UseErrorLevel,runpid
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGetPos,x,y,,,AHK_PID %runpid%
@@ -685,7 +689,7 @@ ToRun(str,Mode="")
 	}
 	If Not RegExMatch(Mode,"i)(max)|(min)|(hide)")
 	{
-    	Run %str%,,UseErrorLevel,runpid
+    	Run %str%,%WorkingDir%,UseErrorLevel,runpid
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 	}
@@ -944,6 +948,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 				}
 				Else
 					Menu,%MenuName%,Add,%ItemKey%,<Interpreter>
+				;Menu,%MenuName%,Color,FFFF00,single
 				If ErrorLevel
 					Continue
 				Else
@@ -1314,8 +1319,9 @@ ClearRealSwitch(String)
 }
 ReplaceSwitch(MenuString)
 {
-	Global SaveString
+	;Global SaveString
 	; 如果无内容不进行多余处理
+	WorkingDir := A_WorkingDir
 	If RegExMatch(MenuString,"^[\s\t\n\r]*$")
 		Return
 	Select := Object()
@@ -1631,6 +1637,11 @@ ReplaceSwitch(MenuString)
 			}
 			Else
 				RString := A_AhkPath " """ RegExReplace(Switch,"i)(^\{ahk:)|\}$") """"
+		}
+		Else If RegExMatch(Switch,"i)\{workdir:[^\{\}]*\}")
+		{
+			WorkingDir := SubStr(Switch,10,Strlen(Switch)-10)
+			RString := ""
 		}
 		MenuString := RegExReplace(MenuString,ToMatch(Switch),ToReplace(RString),"",1,Pos)
 		Pos += Strlen(RString)
