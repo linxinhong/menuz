@@ -1,8 +1,7 @@
 ﻿; Version  : 0.1
-; Time     : 2013-05-22 19:05
 ; 感谢万能的AHK
 ; 感谢Candy(万年书妖)的理念，才有MenuZ的出现。MenuZ是由Candy演化而来的。
-; 感谢Sunwind的大力支持和推动。
+; 感谢Sunwind和jian.w的大力支持和推动。
 ; 感谢小古、璀璨dē陽光、Evil、没什么大不了、汐潮等网友的意见和建议
 ; Init {{{1
 #NoEnv
@@ -25,6 +24,7 @@ Global SaveString ;全局变量SaveString，在哪里都可以被读取
 Global SaveClip   ;全局变量SaveClip，保存剪切板原始数据
 Global SaveID ;保存当前选择的AHK_ID
 Global SaveCtrl ;保存当前选择的Ctrl
+Global SaveType 
 Global ItemString ;保存执行的菜单内容
 Global IconState 
 Global WorkingDir
@@ -258,6 +258,7 @@ MenuzRun()
 ; MenuZInit(type) {{{2
 MenuZInit(Type)
 {
+	EditINI := ""
 	;一级菜单清空
 	Menu,MenuZ,Add
 	Menu,MenuZ,DeleteAll
@@ -335,23 +336,171 @@ ShowMenu()
 	Menu,MenuZ,Show,%xp%,%yp%
 }
 <config>:
-	Config()
+	SimpleConfig()
 return
 ; Config() {{{2
-Config()
+SimpleConfig()
 {
-	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+	Global ListBox_SConfig
+	Global Text_SConfig 
 	If INIReadValue(INI,"Config","EditRelateINI",0)
 	{
-		Loop,Parse,EditINI,%A_Tab%
+		GoSub,SCDestroy
+		GUI,SC:Default
+		GUI,SC:Font,s10
+		GUI,SC:Add,ListView,Grid AltSubmit gSimpleConfig_Edit vListBox_SConfig x10 y10 h200 w400,热键|配置文件
+		GUI,SC:Add,CheckBox,x10 y220 h26 gSimpleConfig_chk,全部配置(&D)
+		GUI,SC:Add,Button,x110  y220 h26 gSimpleConfig_rel,打开关联配置(&F)
+		GUI,SC:Add,Button,x230  y220 h26 gSimpleConfig_All,打开全部配置(&G)
+		GUI,SC:Add,Button,x350 y220 h26 gSCDestroy,关闭(&C)
+		GUI,SC:Add,Button,x1 y1 gSimpleConfig_Enter hidden Default
+		LV_ModifyCol(1,"Center")
+		Config := RegExReplace(INI,"i)" ToMatch(A_ScriptDir "\"))
+		Config_List .= Config "`n"
+		LV_Add(vis,1,Config)
+		Loop,Parse,EditINI,`n
 		{
 			If FileExist(A_LoopField)
-				Run %Editor% "%A_LoopField%"
+			{
+				Config := RegExReplace(A_LoopField,"i)" ToMatch(A_ScriptDir "\"))
+				Config_List .= Config "`n"
+				Key := A_Index + 1
+				LV_Add(vis,key,Config)
+			}
+		}
+		GUI,SC:Add,Text,x1 y1 vText_SConfig hidden ,%Config_List%
+		GUI,SC:Show,w420,配置文件管理
+		Winactivate,配置文件管理
+	}
+	Else
+	{
+		Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+		Run %Editor% "%INI%"
+	}
+	return
+}
+SimpleConfig_Edit:
+	SimpleConfig_Edit()
+return
+SimpleConfig_Edit()
+{
+	If InStr(A_GuiEvent,"K")
+	{
+		If A_EventInfo = 70
+			SimpleConfig_All()
+		If A_EventInfo = 71
+			SimpleConfig_rel()
+		If A_EventInfo = 67
+			GoSub,SCDestroy
+		If A_EventInfo = 74
+			ControlSend,SysListView321,{down},A
+		If A_EventInfo = 75
+			ControlSend,SysListView321,{up},A
+		ControlSend,SysListView321,{bs},A
+		Return
+	}
+	If InStr(A_GuiEvent,"A")
+	{
+		LV_GetText(inifile,A_EventInfo,2)
+		inifile := A_ScriptDir "\" inifile
+		If Not FileExist(inifile)
+			Return
+		Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+		Run %Editor% "%inifile%"
+	}
+	Else
+		Return
+	Return
+	;Msgbox % A_EventInfo
+	;return
+}
+SCDestroy:
+	GUI,SC:Destroy
+Return
+SimpleConfig_All:
+	SimpleConfig_All()
+Return
+SimpleConfig_All()
+{
+	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+	ConfigDir := A_ScriptDir "\Config"
+	If FileExist(ConfigDir)
+	{
+		Loop,%ConfigDir%\*.*,0,1
+		{
+			If RegExMatch(A_LoopFileName,"i)^auto\.ini$")
+				Continue
+			If RegExMatch(A_LoopFileFullPath,"i)\.ini$")
+				Run %Editor% "%A_LoopFileFullPath%"
+		}
+	}
+	Run %Editor% "%INI%"
+}
+SimpleConfig_rel:
+	SimpleConfig_rel()
+return
+SimpleConfig_rel()
+{
+	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+	GuiControlGet,inifiles,,Text_SConfig
+	Loop,Parse,Inifiles,`n
+	{
+		If RegExMatch(A_LoopField,"i)menuz\.ini") OR ( Strlen(A_LoopField) = 0 )
+			Continue
+		LoopINI := A_ScriptDir "\" A_LoopField
+		Run %Editor% "%LoopINI%"
+	}
+	Run %Editor% "%INI%"
+}
+SimpleConfig_chk:
+	SimpleConfig_chk()
+return
+SimpleConfig_chk()
+{
+	LV_Delete()
+	idx := 1
+	Config := RegExReplace(INI,"i)" ToMatch(A_ScriptDir "\"))
+	LV_Add(vis,idx,Config)
+	ControlGet,Value,Checked,,Button1,配置文件管理
+	If Value
+	{
+		ConfigDir := A_ScriptDir "\config"
+		If FileExist(ConfigDir)
+		{
+			Loop,%ConfigDir%\*.*,0,1
+			{
+				If RegExMatch(A_LoopFileName,"i)^auto\.ini$")
+					Continue
+				idx++
+				If RegExMatch(A_LoopFileName,"i)\.ini$")
+					config := "config\" A_LoopFileName
+				LV_Add(vis,idx,Config)
+			}
 		}
 	}
 	Else
-		Run %Editor% "%INI%"
-		
+	{
+		Loop,Parse,EditINI,`n
+		{
+			If FileExist(A_LoopField)
+			{
+				Config := RegExReplace(A_LoopField,"i)" ToMatch(A_ScriptDir "\"))
+				Config_List .= Config "`n"
+				Key := A_Index + 1
+				LV_Add(vis,key,Config)
+			}
+		}
+	}
+}
+SimpleConfig_Enter:
+	SimpleConfig_Enter()
+Return
+SimpleConfig_Enter()
+{
+	LV_GetText(inifile,LV_GetNext(0,"Focused"),2)
+	inifile := A_ScriptDir "\" inifile
+	Editor := INIReadValue(INI,"Config","Editor","Notepad.exe")
+	Run %Editor% "%inifile%"
 }
 ; Receive_WM_COPYDATA(wParam, lParam) {{{2
 Receive_WM_COPYDATA(wParam, lParam)
@@ -435,7 +584,7 @@ Select()
 	MaxTimeWait := INIReadValue(INI,"Config","SelectOverTime",4)
 	ClipSaved := ClipboardAll 
 	Clipboard =
-	Send ^c
+	Sendinput ^c
 	While(!Clipboard)
 	{
 		ClipWait,0.1,1
@@ -659,9 +808,7 @@ ToRun(str,Mode="")
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
-		If m = 1
-			Return
-		Else
+		If m <> 1
 			Winmaximize,AHK_PID %runpid%
 	}
 	If RegExMatch(Mode,"i)^min$")
@@ -670,9 +817,7 @@ ToRun(str,Mode="")
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGet,m,MinMax,AHK_PID %runpid%
-		If m = -1
-			Return
-		Else
+		If m <> -1
 			Winminimize,AHK_PID %runpid%
 	}
 	If RegExMatch(Mode,"i)^hide$")
@@ -681,11 +826,8 @@ ToRun(str,Mode="")
 		If ErrorLevel
 			Traytip,错误,%str%`n运行有误，请检查,10,3
 		WinGetPos,x,y,,,AHK_PID %runpid%
-		If (x = "") and (y = "")
-			return
-		Else
+		If (x <> "") or (y <> "")
 			Winhide,AHK_PID %runpid%
-		IniWrite,1,%INI%,Hide,%runpid%
 	}
 	If Not RegExMatch(Mode,"i)(max)|(min)|(hide)")
 	{
@@ -718,7 +860,7 @@ RunSendKey(String,Pos)
 ; 要获取的Section段，一般为Type、子菜单名
 ; INI为INI文件列表
 ; 保存为多行字符串
-ReadToMenuZItem(Type,INIFiles,OnlyType=False)
+ReadToMenuZItem(Type,INIFiles,OnlyType=False,ModeCtrl=False)
 {
 	IsClass := RegExMatch(Type,"^CLASS$")
 	Select  := ReturnTypeString(SaveString)
@@ -733,7 +875,7 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 	MatchType := "i)(^" MatchThistype "\|)|(\|" MatchThistype "\|)|(\|" MatchThisType "$)|(^" MatchThistype "$)"
 	MenuMode := Strlen(RunMode) ? RunMode : IniReadValue(INI,"Hotkey",A_Thishotkey,"{Mode}")
 	MenuZItem["MenuMode"] := MenuMode
-	MatchMode    := ToMatch(MenuMode)  ; 用于后继的正则比较
+	MatchMode    := "i)" ToMatch(MenuMode)  ; 用于后继的正则比较
 	MatchModeALL := "i)" ToMatch(Substr(MenuMode,1,strlen(MenuMode)-1)) ":all\}" ; 用于后继的ModeALL正则比较
 	Match := ToMatch(Type)
 	InMatch := "i)(^" Match "\|)|(\|" Match "\|)|(\|" Match "$)"  ; 模糊匹配
@@ -775,13 +917,22 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 	;Msgbox % ALLItem
 	Loop,Parse,ALLItem,`n,`r
 	{
-		LoopString := ReplaceVar(A_LoopField)
+		LoopString := substr(A_LoopField,1,Instr(A_LoopField,"=")) ReplaceVar(substr(A_LoopField,instr(A_LoopField,"=")+1))
 		If Not RegExMatch(LoopString,"[^\s\t]") OR ( RegExMatch(LoopString,"i)^ClassName=") And IsClass )
 			Continue
-		If Not RegExMatch(MenuMode,"i)\{mode\}")
-			If ( Not RegExMatch(LoopString,MatchMode) ) And  ( Not RegExMatch(LoopString,MatchModeAll) )
+		If RegExMatch(MenuMode,"i)\{mode\}")
+		{
+			If RegExMatch(LoopString,"i)\{sep\}")
 				Continue
-		If RegExMatch(LoopString,"i)\{default}",Switch)
+		}
+		Else
+		{
+			If ( Not RegExMatch(LoopString,MatchMode) ) And  ( Not RegExMatch(LoopString,MatchModeAll) ) And ( Not ModeCtrl )
+				Continue
+		}
+		If RegExMatch(LoopString,"i)\{blank\}")
+			Continue
+		If RegExMatch(LoopString,"i)\{default\}",Switch)
 		{
 			LoopString := RegExReplace(LoopString,ToMatch(Switch))
 			MenuZItem["Default"] := LoopString
@@ -811,6 +962,26 @@ ReadToMenuZItem(Type,INIFiles,OnlyType=False)
 			Mode := SubStr(Switch,7,1)
 			thistype := Substr(Switch,8,strlen(Switch)-8)
 			If ( Not RegExMatch(thistype,MatchType) And RegExMatch(Mode,"=") ) OR ( RegExMatch(Mode,"!") AND  RegExMatch(thistype,MatchType) )
+				Continue
+		}
+		If RegExMatch(LoopString,"i)\{mtype:[^\{\}]*\}",Switch) And RegExMatch(Select.Type,"^Multifiles$")
+		{
+			LoopString := RegExReplace(LoopString,ToMatch(Switch))
+			Mode := SubStr(Switch,8,1)
+			thistype := Substr(Switch,9,strlen(Switch)-9)
+			mfiles := Select.String
+			Loop,Parse,mfiles,`n
+			{
+				If strlen(A_LoopField) = 0
+					Continue
+				mt_MatchThisType  := ToMatch(GetType(A_LoopField))
+				mt_MatchType := "i)(^" mt_MatchThistype "\|)|(\|" mt_MatchThistype "\|)|(\|" mt_MatchThisType "$)|(^" mt_MatchThistype "$)"
+				If ( Not RegExMatch(thistype,mt_MatchType) And RegExMatch(Mode,"=") ) OR ( RegExMatch(Mode,"!") AND  RegExMatch(thistype,mt_MatchType) )
+					IsContinue := True
+				Else
+					IsContinue := False
+			}
+			If IsContinue
 				Continue
 		}
 		; 根据 name 来决定要哪个菜单
@@ -857,7 +1028,7 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 		If RegExMatch(LoopString,"i)\{SubMenu:[^\{\}]*\}",Switch)
 		{
 			SubMenuName := Substr(Switch,10,strlen(Switch)-10)
-			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,TempINI,True))
+			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(SubMenuName,TempINI,True,True))
 				IsSubMenuName := True
 			Else
 				Continue
@@ -870,7 +1041,10 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
-			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True),True)
+			MatchINIFile := "\t" ToMatch(INIFile) "\t"
+			If Not RegExMatch(EditINI,MatchINIFile)
+				EditINI .= INIFile "`n"
+			If CreateMenu(Type,MenuName,ReadToMenuZItem(INIType,INIFile,True,True),True)
 				TempINI := SaveALLINI
 			Continue
 			
@@ -882,9 +1056,6 @@ CreateMenu(Type,MenuName,ALLItem="",Enforcement=False)
 			Splitpath,INIFile,,,,INIType
 			SaveALLINI := TempINI
 			TempINI := INIFile
-			MatchINIFile := "\t" ToMatch(INIFile) "\t"
-			If Not RegExMatch(EditINI,MatchINIFile)
-				EditINI .= A_Tab INIFile A_Tab
 			;Msgbox % SubMenuName  "`n" ReadToMenuZItem(INIType,INIFile,True)
 			If CreateMenu(Type,SubMenuName,ReadToMenuZItem(INIType,INIFile,True),True)
 			{
@@ -1300,7 +1471,11 @@ ClearRealSwitch(String)
 		ExecMode := SubStr(MatchRun,6,strlen(MatchRun)-6)
 	String := RegExReplace(String,"i)\{run:[^\}\}]*\}")
 	; {hide} {{{3
-	String := RegExReplace(string,"i)\{hide}")
+	String := RegExReplace(string,"i)\{hide\}")
+	; {blank} {{{3
+	String := RegExReplace(string,"i)\{blank\}")
+	; {sep} {{{3
+	String := RegExReplace(string,"i)\{sep\}")
 	; {icon} {{{3
 	String := RegExReplace(String,"i)\{icon:[^\}]*\}")
 	; {class} {{{3
@@ -1339,12 +1514,14 @@ ReplaceSwitch(MenuString)
 		Splitpath,file,Name,Dir,Ext,NameNoExt,Drive
 		Drive .= "\"
 		DirName := SplitpathNameOnly(Dir)
+		If RegExMatch(Select.Type,"i)^Folder$")
+			NameNoExt := Name
 	}
 	Else
 		File := ""
 	; 多文件预处理
 	MfileArray := Object()
-	If RegExMatch(Select.Type,"i)^Multifiles$")
+	If RegExMatch(Select.Type,"i)(^Multifiles$)|(^\..*)|(^Folder$)") 
 	{
 		MfileArray["All"]  := ""
 		MfileArray["File"] := ""
@@ -1402,10 +1579,10 @@ ReplaceSwitch(MenuString)
 		; {mfile} {{{3
 		Else If RegExMatch(Switch,"i)\{mfile[^\{\}]*\}",mfileSwitch)
 		{
-			If RegExMatch(Select.Type,"^Multifiles$")
+			;If RegExMatch(Select.Type,"^Multifiles$")
 				RString := StringByMfile(mfileSwitch,MfileArray)
-			Else
-				RString := file
+			;Else
+			;	RString := file
 		}
 		; {file} {{{3
 		Else If RegExMatch(Switch,"i)\{file[^\{\}]*\}",fileSwitch)
@@ -1422,8 +1599,12 @@ ReplaceSwitch(MenuString)
 					RString := ""
 			}
 			Else
+			{
+				;If RegExMatch(RString,"i)^ext$") And Not RegExMatch(Select.Type,"^\.")
+				;	RString := ""
 				If RegExMatch(RString,"i)^(path)|(name)|(dir)|(ext)|(namenoext)|(drive)|(Content)$")
 					RString := %RString%
+			}
 		}
 		; {Select} {{{3
 		Else If RegExMatch(Switch,"i)\{select[^\{\}]*}",SelectSwitch)
@@ -1551,10 +1732,10 @@ ReplaceSwitch(MenuString)
 			; {save:clip}  {{{4
 			; 将替换完毕的内容保存到剪切板中
 			Else If RegExMatch(Switch,"i)\{save:clip\}")
-				{
-					MatchClip := Switch
-					RString := ""
-				}
+			{
+				MatchClip := Switch
+				RString := ""
+			}
 			; {save:assc} {{{4
 				Else
 					If RegExMatch(Switch,"i)\{save:[^\{\}]*\}")
@@ -1648,7 +1829,7 @@ ReplaceSwitch(MenuString)
 	}
 	If Strlen(MatchClipAll)
 	{
-		Clipboard := SaveClip
+		Clipboard = %SaveClip%
 		MatchClipAll := ""
 	}
 	If Strlen(MatchClip)
@@ -1702,7 +1883,7 @@ StringByMfile(Switch,MfileArray)
 	}
 	Else
 		ChrNum := 0
-	If RegExMatch(opt,":\$\d*",MfileIndex)
+	If RegExMatch(opt,":%\d*",MfileIndex)
 	{
 		IsIndex := True
 		Opt := RegExReplace(opt,ToMatch(MfileIndex))
@@ -1828,8 +2009,8 @@ SplitpathNameOnly(Path)
 ; IniReadValue(INIFile,Section="",Key="",Default="") {{{2
 IniReadValue(INIFile,Section="",Key="",Default="")
 {
-	;DebugCount++
-	;Tooltip % DebugCount
+;	DebugCount++
+;	Tooltip % DebugCount
 	ErrorLevel := False
 	IniRead,Value,%INIFile%,%Section%,%Key%
 	If Value = ERROR
