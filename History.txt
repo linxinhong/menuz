@@ -5,6 +5,20 @@
 - 重做{send:key}机制
 
 [History]
+2013-7-10
+++ 将出菜单的最后一项，设置为简单配置文件管理器。
+++ 添加{sep} 与 {mode} 配合，用于控制模式，默认{mode} 是包含所有其它情景的菜单，如{mode:test}，{mode:aaa}，如果只想某个程序只归某个情景使用，可以用以下设定
+   ;以下菜单只归{mode:test｝拥有
+   test=cmd.exe {mode:test} {sep}
+   ;以下菜单归{mode} 和 {mode:test} 共同拥有。
+   test2=notepad.exe {mode:test}
+++ {mtype} 当多文件时，所有的对象类型都满足设定时，菜单才会出现，以下例子为当所有的文件都是.txt或者.ahk时，菜单有效(必须是多文件为前提，如果非多文件，请用{type})
+   test=cmd.exe {mtype:=.ahk|.txt}
+** 修复运行结果提示不正确的问题
+** 修复打开关联INI时不正确的问题
+** 修复当对象为文件夹时，并且文件夹名中带有"."，{namenoext}不正确的问题。
+** 优化{mfile} 逻辑。
+
 2013-6-21
 ** 修复{default}开关出错
 
