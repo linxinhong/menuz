@@ -35,6 +35,11 @@ If 0 > 0
 				IsReload := True 
 				Continue
 			}
+			If RegExMatch(param,"i)/l")
+			{
+				IsList := True 
+				Continue
+			}
 		}
 		idx++
 		ParamString[idx] := param
@@ -51,6 +56,11 @@ If IsParam
 		MZA_Add(ParamString,1)
 	Else If IsUninstall 
 		MZA_Del(ParamString)
+	Else If IsList
+	{
+		MZA_List()
+		Return
+	}
 }
 CheckExtension()
 Return
@@ -258,7 +268,7 @@ MZA_Del(Param)
 			DeleteFileMsg := ""
 			Loop,%DeleteFileCount%
 				DeleteFileMsg .= IniReadValue(UnInstallINI,"FileTree",A_Index) "`n"
-			Msgbox,4,"删除MZA", % "为免出错,MenuZ.ini中的配置内容请自行删除`n请确认要删除的内容`n" DeleteFileMsg
+			Msgbox,4,删除MZA, % "为免出错,MenuZ.ini中的配置内容请自行删除`n请确认要删除的内容`n" DeleteFileMsg
 			IfMsgbox No
 				Continue
 		}
@@ -274,6 +284,35 @@ MZA_Del(Param)
 		}
 		Filedelete,%UnInstallINI%
 	}
+}
+; MZA_List() {{{1
+MZA_List()
+{
+	MZAListDir := A_ScriptDir "\Apps\MZA\*.ini"
+	Gui,List:Destroy
+	Gui,List:Default
+	Gui,List:Add,ListView,h200 w300,插件
+	Gui,List:Add,Button,h24 w60 x170  y210 gUnInstallThis,卸载(&U)
+	Gui,List:Add,Button,h24 w60 x250 y210 gListDestroy,取消(&C)
+	Loop,%MZAListDir%,0
+	{
+		MZA_Name := Substr(A_LoopFileName,1,Strlen(A_LoopFileName)-4)
+		LV_Add("vis",MZA_Name)
+	}
+	Gui,List:Show
+	Return
+	UnInstallThis:
+		ControlGet,Line,List,Count Focused,SysListView321,A
+		LV_GetText(MZA_Name,Line)
+		LV_Delete(Line)
+		lparam := Object()
+		lparam[0] := 1
+		lparam[1] := MZA_Name
+		MZA_Del(lparam)
+	Return
+	ListDestroy:
+		Gui,List:Destroy
+	Return	
 }
 ; ToMatch(str) {{{1
 ToMatch(str)
